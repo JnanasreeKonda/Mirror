@@ -249,6 +249,17 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
+// Close button for screenshot preview
+const closeScreenshotBtn = document.getElementById("closeScreenshotBtn");
+if (closeScreenshotBtn) {
+  closeScreenshotBtn.addEventListener("click", () => {
+    const screenshotPreview = document.getElementById("screenshotPreview");
+    if (screenshotPreview) {
+      screenshotPreview.style.display = "none";
+    }
+  });
+}
+
 // 2. Recording Logic
 micBtn.addEventListener("click", async () => {
   if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -461,7 +472,7 @@ function formatMirrorResponse(text) {
     
     // Format "Complete The Look"
     if (line.includes('**Complete The Look:**')) {
-      html += '<div style="font-size:0.55rem; letter-spacing:3px; text-transform:uppercase; color:#8b6f47; margin:20px 0 12px; font-weight:600;">Complete The Look:</div>';
+      html += '<div style="font-size:1rem; letter-spacing:1px; color:#4a3a24; margin:24px 0 16px; font-weight:700; line-height:1.4; font-family:Cormorant Garamond,serif;">Here are more recommendations to complete this look</div>';
       continue;
     }
     
@@ -481,13 +492,12 @@ function formatMirrorResponse(text) {
 }
 
 function createProductCard(name, price, source, url, thumbnail, description, isComplementary) {
-  const cardStyle = isComplementary 
-    ? 'background:#f5f0e8; border:2px solid rgba(196,165,123,0.4); box-shadow:0 6px 20px rgba(139,111,71,0.2);'
-    : 'background:#f5f0e8; border:1px solid rgba(139,111,71,0.2); box-shadow:0 4px 12px rgba(45,37,32,0.12);';
+  const borderColor = isComplementary ? 'rgba(139,111,71,0.6)' : 'rgba(107,84,53,0.4)';
+  const glowColor = isComplementary ? 'rgba(139,111,71,0.4)' : 'rgba(107,84,53,0.3)';
   
   const imageHtml = thumbnail && thumbnail.trim() 
-    ? `<div style="width:120px; height:160px; flex-shrink:0; background:#ede6d8; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; transition:all 0.3s ease;"><img src="${thumbnail}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onerror="this.parentElement.innerHTML='<div style=\\"font-size:2rem; color:rgba(139,111,71,0.4);\\">\uD83D\uDECD\uFE0F</div>'"></div>`
-    : `<div style="width:120px; height:160px; flex-shrink:0; background:#ede6d8; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:2rem; color:rgba(139,111,71,0.4);">\uD83D\uDECD\uFE0F</div>`;
+    ? `<div style="width:225px; height:285px; flex-shrink:0; background:#d4c5b0; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; transition:all 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:0 8px 20px rgba(107,84,53,0.3);"><img src="${thumbnail}" style="width:100%; height:100%; object-fit:cover; transition:all 0.4s ease;" onmouseover="this.style.transform='scale(1.08) rotate(1deg)'; this.parentElement.style.boxShadow='0 12px 30px rgba(107,84,53,0.4)'" onmouseout="this.style.transform='scale(1) rotate(0deg)'; this.parentElement.style.boxShadow='0 8px 20px rgba(107,84,53,0.3)'" onerror="this.parentElement.innerHTML='<div style=\\"font-size:3rem; color:rgba(107,84,53,0.5);\\">\uD83D\uDECD\uFE0F</div>'"></div>`
+    : `<div style="width:225px; height:285px; flex-shrink:0; background:#d4c5b0; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:3rem; color:rgba(107,84,53,0.5); box-shadow:0 8px 20px rgba(107,84,53,0.3);">\uD83D\uDECD\uFE0F</div>`;
   
-  return `<div class="product-card" style="${cardStyle} border-radius:10px; padding:8px; margin:6px 0; display:flex; flex-direction:row; gap:8px; align-items:stretch; transition:all 0.3s ease; animation:slideIn 0.5s ease both; cursor:pointer;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 25px rgba(139,111,71,0.25)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='${cardStyle.includes('box-shadow') ? cardStyle.split('box-shadow:')[1].split(';')[0] : '0 4px 12px rgba(45,37,32,0.12)'}'">${imageHtml}<div style="flex:1; display:flex; flex-direction:column; justify-content:center; min-width:0; padding:0;"><div style="font-size:0.75rem; font-weight:700; color:#2d2520; line-height:1.2; margin-bottom:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${name}</div><div style="font-size:0.85rem; color:#8b6f47; font-weight:800; margin-bottom:4px;">${price}</div><div style="font-size:0.58rem; color:#8b6f47; font-weight:500; margin-bottom:6px; opacity:0.8;">${source}</div><a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block; font-size:0.45rem; letter-spacing:2px; text-transform:uppercase; color:white; text-decoration:none; padding:7px 10px; border-radius:6px; transition:all 0.3s ease; background:linear-gradient(135deg, #8b6f47 0%, #c4a57b 100%); text-align:center; font-weight:600; box-shadow:0 3px 10px rgba(139,111,71,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(139,111,71,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 3px 10px rgba(139,111,71,0.3)'">SHOP NOW ↗</a></div></div>`;
+  return `<div class="product-card" style="display:flex; flex-direction:row; gap:16px; align-items:flex-start; margin:0 0 40px 0; transition:all 0.4s cubic-bezier(0.4, 0, 0.2, 1); animation:slideIn 0.6s ease both;" onmouseover="this.style.transform='translateX(6px)'" onmouseout="this.style.transform='translateX(0)'">${imageHtml}<div style="flex:1; display:flex; flex-direction:column; justify-content:flex-start; min-width:0; padding:8px 0;"><div style="font-size:0.85rem; font-weight:700; color:#1a1410; line-height:1.3; margin-bottom:8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; animation:fadeIn 0.5s ease 0.1s both;">${name}</div><div style="font-size:1.1rem; color:#6b5435; font-weight:800; margin-bottom:6px; animation:fadeIn 0.5s ease 0.2s both;">${price}</div><div style="font-size:0.7rem; color:#6b5435; font-weight:600; margin-bottom:12px; opacity:0.85; animation:fadeIn 0.5s ease 0.3s both;">${source}</div><a href="${url}" target="_blank" rel="noopener noreferrer" style="display:inline-block; font-size:0.52rem; letter-spacing:2px; text-transform:uppercase; color:white; text-decoration:none; padding:10px 18px; border-radius:8px; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background:linear-gradient(135deg, #6b5435 0%, #8b6f47 100%); text-align:center; font-weight:700; box-shadow:0 5px 15px ${glowColor}; border:1px solid ${borderColor}; animation:fadeIn 0.5s ease 0.4s both; align-self:flex-start; margin-bottom:32px;" onmouseover="this.style.transform='translateY(-4px) scale(1.03)'; this.style.boxShadow='0 8px 24px rgba(107,84,53,0.5)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 5px 15px ${glowColor}'">SHOP NOW \u2197</a></div></div>`;
 }
