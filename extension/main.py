@@ -15,8 +15,21 @@ from google.genai import types
 # 1. SETUP
 # ─────────────────────────────────────────────
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDVLGXkV5v3I5yGmmPRJP1Fzx3aliYw7Ro")
-SERP_API_KEY   = os.environ.get("SERP_API_KEY", "e0568bc53dc372ddd9a1f9e67ffcc75a3c441e843a9a9116dfe43ad3da7d8d8f")
+try:
+    from dotenv import load_dotenv  # type: ignore
+except Exception:
+    load_dotenv = None
+
+if load_dotenv:
+    load_dotenv()
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+SERP_API_KEY   = os.environ.get("SERP_API_KEY")
+
+if not GEMINI_API_KEY:
+    raise RuntimeError(
+        "GEMINI_API_KEY is not set. Create a .env file (ignored by git) or export GEMINI_API_KEY in your shell."
+    )
 
 # ── Model constants (change here to update everywhere) ──────────────────────
 # All standard text/vision/audio analysis calls
