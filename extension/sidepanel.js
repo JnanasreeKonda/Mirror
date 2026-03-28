@@ -1,62 +1,96 @@
 let mediaRecorder;
 let audioChunks = [];
-let stream;
+let capturedImage = null;
 
-// 1. PRIME THE MIC: This solves the "Permission Dismissed" error
-document.getElementById('startMirrorBtn').addEventListener('click', async () => {
-    try {
-        console.log("🎤 Requesting mic access via button click...");
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log("✅ Mic Access Granted!");
+// --- 1. STATUS HANDLER ---
+function updateStatus(text) {
+    const statusEl = document.getElementById('status');
+    if (statusEl) statusEl.innerText = text.toUpperCase();
+}
 
-        document.getElementById('startMirrorBtn').innerText = "MIRROR ACTIVE";
-        document.getElementById('startMirrorBtn').style.background = "#28a745";
-        document.getElementById('status').innerText = "Ready for Ctrl+Shift+S";
-    } catch (err) {
-        console.error("❌ Mic Access Denied:", err);
-        alert("Please click the Lock icon in the URL bar and Allow the Microphone.");
-    }
-});
-
-// 2. LISTEN FOR SHORTCUT
+// --- 2. SCREENSHOT LISTENER ---
 chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "SCREENSHOT_CAPTURED") {
-        const img = document.getElementById('preview');
-        img.src = message.data;
-        img.style.display = 'block';
-
-        if (stream) {
-            startRecording();
-        } else {
-            document.getElementById('status').innerText = "Error: Activate Mic first!";
-        }
+        capturedImage = message.data;
+        document.getElementById('preview').src = capturedImage;
+        document.getElementById('preview').style.display = 'block';
+        document.getElementById('emptyState').style.display = 'none';
+        updateStatus("Context captured");
     }
 });
 
-async function startRecording() {
-    audioChunks = [];
-    mediaRecorder = new MediaRecorder(stream);
+// --- 3. VOICE RECORDING ---
+const micBtn = document.getElementById('micBtn');
+const micLabel = document.getElementById('micLabel');
+const micSub = document.getElementById('micSub');
+const userInput = document.getElementById('user-input');
+const chapterLabel = document.getElementById('chapterLabel');
 
-    mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-    };
+micBtn.addEventListener('click', async () => {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+        stopVoiceCapture();
+    } else {
+        await startVoiceCapture();
+    }
+});
 
-    mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        console.log("✅ Audio Captured. Size:", audioBlob.size, "bytes");
+async function startVoiceCapture() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
 
-        document.getElementById('micDot').classList.remove('recording');
-        document.getElementById('status').innerText = "Look captured. Processing...";
-    };
+        mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            sendToTranscribe(audioBlob);
+        };
 
-    mediaRecorder.start();
-    document.getElementById('micDot').classList.add('recording');
-    document.getElementById('status').innerText = "Listening...";
-
-    // Auto-stop after 5 seconds
-    setTimeout(() => {
-        if (mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-        }
-    }, 5000);
+        mediaRecorder.start();
+        micLabel.innerText = "Listening...";
+        micSub.innerText = "Speak your style desire";
+        chapterLabel.innerText = "Voice Inscription";
+        updateStatus("Recording");
+    } catch (err) {
+        updateStatus("Mic Error");
+    }
 }
+
+function stopVoiceCapture() {
+    mediaRecorder.stop();
+    micLabel.innerText = "Touch the orb to speak";
+    micSub.innerText = "Voice becomes intention";
+    chapterLabel.innerText = "Inscribe your desire";
+    updateStatus("Transcribing");
+}
+
+// --- 4. BACKEND INTEGRATION ---
+async function sendToTranscribe(blob) {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = async () => {
+        const base64Audio = reader.result.split(',')[1];
+        try {
+            const response = await fetch('http://localhost:8000/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audio: base64Audio })
+            });
+            const data = await response.json();
+            userInput.value = data.text;
+            userInput.focus();
+            updateStatus("Review and press Enter");
+        } catch (e) {
+            updateStatus("STT Failed");
+        }
+    };
+}
+
+userInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const finalQuery = userInput.value;
+        // FINAL SEND LOGIC
+        console.log("Sending to Stylist:", finalQuery);
+        updateStatus("Finding your look...");
+    }
+});

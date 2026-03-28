@@ -2,17 +2,18 @@
   "manifest_version": 3,
   "name": "Mirror",
   "version": "1.0",
+  "description": "High-end AI fashion stylist reflecting your best self.",
   "permissions": ["sidePanel", "activeTab", "scripting"],
-  "commands": {
-    "capture_look": {
-      "suggested_key": { "default": "Ctrl+Shift+S" },
-      "description": "Capture frame for Mirror"
-    }
-  },
   "background": {
     "service_worker": "background.js"
   },
   "side_panel": {
     "default_path": "sidepanel.html"
+  },
+  "commands": {
+    "capture_look": {
+      "suggested_key": { "default": "Ctrl+Shift+S" },
+      "description": "Capture context for Mirror"
+    }
   }
 }
