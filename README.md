@@ -2,7 +2,7 @@
 
 **Your Personal AI Fashion Assistant That Sees, Listens, and Shops**
 
-Mirror is an intelligent Chrome extension that combines computer vision, voice interaction, and AI-powered fashion analysis to help you find and shop clothing items from any screenshot. Simply capture what you see, describe what you want, and let Mirror find the perfect products for you.
+Mirror is an intelligent Chrome extension that combines computer vision, voice interaction, and AI-powered fashion analysis to help you find and shop clothing items from any image. Simply capture what you see, describe what you want, and let Mirror find the perfect products for you.
 
 ---
 
@@ -18,7 +18,7 @@ Mirror transforms the way people shop online by bridging the gap between inspira
 
 ### **Our Solution**
 Mirror uses cutting-edge AI to:
-1. **Analyze screenshots** with surgical precision (5-dimensional garment analysis)
+1. **Analyze image** with surgical precision (5-dimensional garment analysis)
 2. **Understand your voice** and conversational context
 3. **Search products** across major retailers with smart filtering
 4. **Suggest complete outfits** with complementary items
@@ -28,10 +28,10 @@ Mirror uses cutting-edge AI to:
 
 ## ✨ Key Features
 
-### 🖼️ **Screenshot Capture**
-- One-click screenshot capture with `Ctrl+Shift+S`
+### 🖼️ **image Capture**
+- One-click image capture with `Ctrl+Shift+S`
 - Automatic image analysis using Google Gemini AI
-- Identifies up to 3 clothing items per screenshot
+- Identifies up to 3 clothing items per image
 
 ### 🎤 **Voice Interaction**
 - Record voice queries with real-time waveform visualization
@@ -91,7 +91,7 @@ Mirror uses cutting-edge AI to:
 
 ### **External APIs**
 - **SerpAPI** - Google Shopping product search
-- **Chrome APIs** - Screenshot capture, storage, messaging
+- **Chrome APIs** - image capture, storage, messaging
 
 ### **Development Tools**
 - **Git** - Version control
@@ -109,14 +109,14 @@ Mirror uses cutting-edge AI to:
 ✅ **Sub-20 Second Pipeline** - Fast end-to-end processing  
 
 ### **User Experience**
-✅ **One-Click Capture** - Keyboard shortcut for instant screenshots  
+✅ **One-Click Capture** - Keyboard shortcut for instant image  
 ✅ **Natural Voice Interaction** - Speak naturally, no commands needed  
 ✅ **Personality-Driven** - AI responds like an enthusiastic best friend  
 ✅ **Visual Feedback** - Waveform visualization, animations, status messages  
 ✅ **Complete Outfits** - Not just one item, but coordinated looks  
 
 ### **Performance Metrics**
-- **Screenshot Capture:** ~100ms
+- **image Capture:** ~100ms
 - **Voice Transcription:** ~2-3 seconds
 - **Visual Analysis:** ~3-5 seconds
 - **Product Search:** ~2-4 seconds per item
@@ -223,7 +223,7 @@ INFO:     Application startup complete.
 
 ### **Basic Workflow**
 
-1. **Capture a Screenshot**
+1. **Capture a image**
    - Navigate to any webpage with fashion content
    - Press `Ctrl+Shift+S` (Windows/Linux) or `Cmd+Shift+S` (Mac)
    - You'll see a confirmation: *"Got it, babe! Your vibe is captured ✨"*
@@ -244,7 +244,7 @@ INFO:     Application startup complete.
    - Type in the text field: *"Find me this jacket in green under $100"*
 
    **Option C: Just Submit**
-   - Leave the text field empty to analyze the screenshot without additional context
+   - Leave the text field empty to analyze the image without additional context
 
 4. **Click "Find My Look ↩"**
    - Mirror will analyze the image
@@ -294,7 +294,7 @@ Follow-up: "Show me shoes to match"
 Mirror/
 ├── extension/
 │   ├── main.py              # FastAPI backend (835 lines)
-│   ├── background.js        # Screenshot capture (45 lines)
+│   ├── background.js        # image capture (45 lines)
 │   ├── sidepanel.html       # UI structure (768 lines)
 │   ├── sidepanel.js         # Frontend logic (505 lines)
 │   ├── manifest.json        # Extension config (41 lines)
@@ -377,7 +377,7 @@ netstat -ano | findstr :8000  # Windows
 - Check browser microphone settings
 - Try a different browser if issues persist
 
-### **Screenshot not capturing**
+### **image not capturing**
 - Make sure you're on a regular webpage (not chrome:// pages)
 - Try pressing the keyboard shortcut again
 - Check extension permissions in `chrome://extensions/`
@@ -413,7 +413,7 @@ Complete analysis pipeline.
 **Request:**
 ```json
 {
-  "screenshot_data": "data:image/jpeg;base64,...",
+  "image_data": "data:image/jpeg;base64,...",
   "text_input": "I need that red gingham top",
   "session_id": "session_123"
 }
@@ -514,7 +514,7 @@ All AI prompts are in `main.py`:
 - **API Keys:** Never commit `.env` to version control
 - **User Data:** No data is stored permanently on servers
 - **Session Data:** Stored in-memory, cleared on server restart
-- **Screenshots:** Processed in real-time, not saved
+- **image:** Processed in real-time, not saved
 - **Audio:** Transcribed and discarded, not stored
 
 ---
