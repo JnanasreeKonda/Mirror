@@ -107,304 +107,232 @@
 // ─────────────────────────────────────────────
 
 const BACKEND = "http://localhost:8000";
+let mediaRecorder = null;
+let audioChunks = [];
+let capturedImage = null;
+let lastRecordedAudioBase64 = "";
+let lastRecordedAudioMimeType = "";
+let audioContext = null;
+let analyserNode = null;
+let waveformAnimationFrameId = null;
+let activeMicStream = null;
 
-let mediaRecorder   = null;
-let audioChunks     = [];
-let capturedImage   = null;
-let audioBlob       = null;   // holds the last recorded voice note
-let audioMimeType   = "audio/webm";
-let isRecording     = false;
+// DOM Elements
+const micBtn = document.getElementById("micBtn");
+const tickBtn = document.getElementById("tickBtn");
+const recordingBar = document.getElementById("recording-bar");
+const userInput = document.getElementById("user-input");
+const statusEl = document.getElementById("status");
+const waveformCanvas = document.getElementById("waveformCanvas");
 
-// ── DOM refs ──────────────────────────────────
-const micBtn        = document.getElementById("micBtn");
-const micSub        = document.getElementById("micSub");
-const userInput     = document.getElementById("user-input");
-const chapterLabel  = document.getElementById("chapterLabel");
-const statusEl      = document.getElementById("status");
-const preview       = document.getElementById("preview");
-const emptyState    = document.getElementById("emptyState");
-const sendBtn       = document.getElementById("sendBtn");
-const outputPanel   = document.getElementById("outputPanel");
-
-// ─────────────────────────────────────────────
-// 1. STATUS
-// ─────────────────────────────────────────────
-function updateStatus(text) {
-  if (statusEl) statusEl.innerText = text.toUpperCase();
+function setStatus(text) {
+  if (statusEl) statusEl.textContent = text;
 }
 
-// ─────────────────────────────────────────────
-// 2. SCREENSHOT LISTENER
-// ─────────────────────────────────────────────
-function applyScreenshot(dataUrl) {
-  capturedImage = dataUrl;
-  preview.src = dataUrl;
-  preview.style.display = "block";
-  emptyState.style.display = "none";
-  updateStatus("Context captured — speak or type your desire");
+function startWaveform(stream) {
+  if (!waveformCanvas) return;
+
+  const ctx = waveformCanvas.getContext("2d");
+  if (!ctx) return;
+
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  analyserNode = audioContext.createAnalyser();
+  analyserNode.fftSize = 2048;
+
+  const source = audioContext.createMediaStreamSource(stream);
+  source.connect(analyserNode);
+
+  const bufferLength = analyserNode.fftSize;
+  const dataArray = new Uint8Array(bufferLength);
+
+  const draw = () => {
+    waveformAnimationFrameId = requestAnimationFrame(draw);
+
+    analyserNode.getByteTimeDomainData(dataArray);
+
+    const width = waveformCanvas.width;
+    const height = waveformCanvas.height;
+
+    ctx.clearRect(0, 0, width, height);
+
+    const centerY = height / 2;
+    const barWidth = 2;
+    const gap = 2;
+    const bars = Math.max(1, Math.floor(width / (barWidth + gap)));
+    const samplesPerBar = Math.max(1, Math.floor(bufferLength / bars));
+
+    ctx.fillStyle = "#c9a84c";
+
+    for (let b = 0; b < bars; b++) {
+      const start = b * samplesPerBar;
+      const end = Math.min(bufferLength, start + samplesPerBar);
+
+      let sumSq = 0;
+      for (let i = start; i < end; i++) {
+        const v = (dataArray[i] - 128) / 128;
+        sumSq += v * v;
+      }
+
+      const rms = Math.sqrt(sumSq / Math.max(1, end - start));
+      const barHeight = Math.max(1, Math.min(height, rms * height * 1.6));
+      const x = b * (barWidth + gap);
+
+      ctx.fillRect(x, centerY - barHeight / 2, barWidth, barHeight);
+    }
+  };
+
+  draw();
 }
 
-// Live message (panel was already open when shortcut was pressed)
+async function stopWaveform() {
+  if (waveformAnimationFrameId) {
+    cancelAnimationFrame(waveformAnimationFrameId);
+    waveformAnimationFrameId = null;
+  }
+
+  if (audioContext) {
+    try {
+      await audioContext.close();
+    } catch (e) {
+      // ignore
+    }
+    audioContext = null;
+  }
+
+  analyserNode = null;
+
+  if (waveformCanvas) {
+    const ctx = waveformCanvas.getContext("2d");
+    if (ctx) ctx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+  }
+}
+
+// 1. Capture Image Listener
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "SCREENSHOT_CAPTURED") {
-    applyScreenshot(message.data);
+    capturedImage = message.data;
+    document.getElementById("preview").src = message.data;
+    document.getElementById("preview").style.display = "block";
+    document.getElementById("emptyState").style.display = "none";
   }
 });
 
-// Fallback: panel just opened — grab screenshot saved by background.js
-chrome.storage.session.get("lastScreenshot", (result) => {
-  if (result.lastScreenshot) {
-    applyScreenshot(result.lastScreenshot);
-    chrome.storage.session.remove("lastScreenshot");
-  }
-});
-
-// ─────────────────────────────────────────────
-// 3. VOICE RECORDING
-// ─────────────────────────────────────────────
+// 2. Recording Logic
 micBtn.addEventListener("click", async () => {
-  if (isRecording) {
-    stopVoiceCapture();
-  } else {
-    await startVoiceCapture();
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    return;
   }
-});
 
-async function startVoiceCapture() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    activeMicStream = stream;
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
 
-    // Pick best supported MIME type
-    const mimeTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg", "audio/mp4"];
-    audioMimeType   = mimeTypes.find((m) => MediaRecorder.isTypeSupported(m)) || "audio/webm";
-
-    mediaRecorder = new MediaRecorder(stream, { mimeType: audioMimeType });
-    audioChunks   = [];
-    audioBlob     = null;
-
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunks.push(e.data);
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+    mediaRecorder.onstop = async () => {
+      const audioMimeType = mediaRecorder.mimeType || "audio/webm";
+      const audioBlob = new Blob(audioChunks, { type: audioMimeType });
+      await stopWaveform();
+      await transcribeToTextField(audioBlob);
+      if (activeMicStream) {
+        activeMicStream.getTracks().forEach(track => track.stop());
+      }
+      activeMicStream = null;
     };
 
-    mediaRecorder.onstop = () => {
-      audioBlob = new Blob(audioChunks, { type: audioMimeType });
-      // Stop all tracks so mic indicator goes away
-      stream.getTracks().forEach((t) => t.stop());
-      updateStatus("Voice captured — press Enter or click Send");
-    };
-
-    mediaRecorder.start(250); // collect data every 250ms
-    isRecording = true;
-
-    micBtn.style.borderColor  = "#ff4444";
-    micBtn.style.background   = "radial-gradient(circle, rgba(255,68,68,0.25), transparent)";
-    micSub.innerText          = "Tap again to stop";
-    chapterLabel.innerText    = "Listening…";
-    updateStatus("Recording");
+    mediaRecorder.start();
+    recordingBar.style.display = "flex";
+    micBtn.style.opacity = "0.3";
+    startWaveform(stream);
+    setStatus("RECORDING");
   } catch (err) {
-    console.error("Mic error:", err);
-    updateStatus("Mic access denied");
-  }
-}
-
-function stopVoiceCapture() {
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    mediaRecorder.stop();
-  }
-  isRecording = false;
-
-  micBtn.style.borderColor  = "var(--gold)";
-  micBtn.style.background   = "radial-gradient(circle, rgba(201,168,76,0.2), transparent)";
-  micSub.innerText          = "Voice becomes intention";
-  chapterLabel.innerText    = "Inscribe your desire";
-}
-
-// ─────────────────────────────────────────────
-// 4. SUBMIT — text Enter key or Send button
-// ─────────────────────────────────────────────
-userInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    submitToMirror();
+    console.error("Mic permission error:", err);
+    setStatus("MIC ERROR");
   }
 });
 
-if (sendBtn) {
-  sendBtn.addEventListener("click", () => submitToMirror());
+// 3. Tick Button (The "Checkmark" from your screenshot)
+tickBtn.addEventListener("click", () => {
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+    recordingBar.style.display = "none";
+    micBtn.style.opacity = "1";
+    setStatus("PROCESSING VOICE");
+  }
+});
+
+// 4. Send Audio to Gemini just for Transcription
+async function transcribeToTextField(blob) {
+  const reader = new FileReader();
+  reader.readAsDataURL(blob);
+  reader.onloadend = async () => {
+    const base64Audio = reader.result.split(",")[1];
+    const mimeType = (blob && blob.type) ? blob.type : "audio/webm";
+    lastRecordedAudioBase64 = base64Audio;
+    lastRecordedAudioMimeType = mimeType;
+
+    try {
+      userInput.placeholder = "Transcribing style desire...";
+      const response = await fetch(`${BACKEND}/transcribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audio_data: base64Audio,
+          mime_type: mimeType
+        }),
+      });
+      const data = await response.json();
+      // Populate the text field with the transcript
+      userInput.value = data.conversation_context?.raw_transcript_summary || "";
+      userInput.placeholder = "Seek the extraordinary...";
+      setStatus("READY");
+    } catch (err) {
+      console.error("Transcription error:", err);
+      setStatus("TRANSCRIBE ERROR");
+    }
+  };
 }
 
-async function submitToMirror() {
+// 5. Final Submit Logic (When clicking "Find My Look")
+document.getElementById("sendBtn").addEventListener("click", async () => {
   if (!capturedImage) {
-    updateStatus("No screenshot yet — press Ctrl+Shift+S first");
+    setStatus("CAPTURE SCREENSHOT FIRST");
     return;
   }
 
-  const textQuery = userInput.value.trim();
+  const text = (userInput.value || "").trim();
 
-  // Resolve audio to base64 if we have a blob
-  let audio_data = "";
-  let mime_type  = audioMimeType;
+  const payload = {
+    image_data: capturedImage,
+    text_input: text,
+    audio_data: "",
+    mime_type: "",
+  };
 
-  if (audioBlob) {
-    audio_data = await blobToBase64(audioBlob);
-    mime_type  = audioBlob.type || audioMimeType;
-    // Strip the data:... prefix — backend wants raw base64
-    if (audio_data.includes(",")) {
-      audio_data = audio_data.split(",")[1];
-    }
-  } else if (textQuery === "") {
-    updateStatus("Type or speak your style desire first");
-    return;
+  if (!text && lastRecordedAudioBase64) {
+    payload.audio_data = lastRecordedAudioBase64;
+    payload.mime_type = lastRecordedAudioMimeType || "audio/webm";
   }
-
-  // Show loading state
-  showLoading();
-  updateStatus("Finding your look…");
 
   try {
-    const body = {
-      image_data: capturedImage,          // already data:image/jpeg;base64,...
-      audio_data: audio_data,             // raw base64 or ""
-      mime_type:  mime_type,
-    };
-
-    // If user typed text but no audio, inject text into the analysis as a note
-    // (backend uses audio primarily; text input goes as a user_text field if supported,
-    //  otherwise we just pass it — the image + voice note is the primary signal)
-    if (textQuery && !audio_data) {
-      body.user_text = textQuery;         // passed through for context
-    }
-
+    setStatus("ANALYZING");
     const response = await fetch(`${BACKEND}/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.detail || `HTTP ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(errorText || `HTTP ${response.status}`);
     }
 
     const data = await response.json();
-    renderOutput(data);
-
-    // Reset after successful send
-    audioBlob = null;
-    userInput.value = "";
-    updateStatus("Done — try another look!");
-
+    console.log("Analyze response:", data);
+    setStatus("DONE");
   } catch (err) {
-    console.error("Mirror API error:", err);
-    showError(err.message);
-    updateStatus("Error — see output panel");
+    console.error("Analyze error:", err);
+    setStatus("ERROR");
   }
-}
-
-// ─────────────────────────────────────────────
-// 5. RENDER OUTPUT
-// ─────────────────────────────────────────────
-function showLoading() {
-  outputPanel.style.display = "flex";
-  outputPanel.innerHTML = `
-    <div class="loading-wrap">
-      <div class="spinner"></div>
-      <div class="loading-text gold-text-shine">Mirror is styling your look…</div>
-    </div>`;
-}
-
-function showError(msg) {
-  outputPanel.style.display = "flex";
-  outputPanel.innerHTML = `
-    <div class="error-wrap">
-      <div style="font-size:1.4rem; margin-bottom:8px;">⚠️</div>
-      <div style="font-size:0.7rem; letter-spacing:2px; color:#ff6b6b;">${escHtml(msg)}</div>
-    </div>`;
-}
-
-function renderOutput(data) {
-  const { mirror_response, voice_note_audio, voice_note_script, conversation_context } = data;
-
-  // Convert markdown-ish response to styled HTML
-  const formattedHtml = mirrorTextToHtml(mirror_response);
-
-  // Build voice note player if audio available
-  const voiceSection = voice_note_audio
-    ? `<div class="voice-note-section">
-        <div class="voice-note-label gold-text-shine">🎙️ Mirror Says</div>
-        ${voice_note_script ? `<div class="voice-script">"${escHtml(voice_note_script)}"</div>` : ""}
-        <audio class="mirror-audio" controls>
-          <source src="data:audio/wav;base64,${voice_note_audio}" type="audio/wav">
-        </audio>
-       </div>`
-    : "";
-
-  // Intent pill
-  const intent = conversation_context?.user_intent || "";
-  const intentPill = intent
-    ? `<span class="intent-pill">${escHtml(intent.replace(/_/g, " "))}</span>`
-    : "";
-
-  outputPanel.style.display = "flex";
-  outputPanel.innerHTML = `
-    <div class="output-scroll">
-      ${intentPill}
-      ${voiceSection}
-      <div class="mirror-text">${formattedHtml}</div>
-    </div>`;
-
-  // Auto-play voice note
-  if (voice_note_audio) {
-    const audioEl = outputPanel.querySelector("audio");
-    if (audioEl) audioEl.play().catch(() => {});
-  }
-}
-
-// ─────────────────────────────────────────────
-// 6. TEXT → HTML FORMATTER
-//    Converts Mirror's editorial markdown output
-// ─────────────────────────────────────────────
-function mirrorTextToHtml(text) {
-  if (!text) return "";
-
-  return text
-    // Section separators
-    .replace(/^---+$/gm, '<hr class="section-rule">')
-    // H3 garment headers
-    .replace(/^### (.+)$/gm, '<h3 class="garment-header">$1</h3>')
-    // Bold product name + price line: **Name** — $XX
-    .replace(/^\*\*(.+?)\*\*\s*—\s*(.+)$/gm,
-      '<div class="product-row"><span class="product-name">$1</span><span class="product-price">$2</span></div>')
-    // Blockquote-style notes (> Why it...)
-    .replace(/^>\s*(.+)$/gm, '<p class="product-note">$1</p>')
-    // Emoji section headers (🪞 Mirror Sees: / 🛍️ Shop The Look: / 💡 Stylist Note:)
-    .replace(/^(🪞|🛍️|💡)\s*(.+):$/gm, '<div class="section-head"><span class="section-icon">$1</span><span class="section-title">$2</span></div>')
-    // ✅ / 🔀 sub-headers
-    .replace(/^(✅|🔀)\s*(.+):?$/gm, '<div class="match-type"><span>$1</span> <span>$2</span></div>')
-    // Plain URLs → clickable links
-    .replace(/^(https?:\/\/[^\s]+)$/gm, '<a class="product-link" href="$1" target="_blank" rel="noopener">🛒 Shop Now</a>')
-    // Remaining lines → paragraphs
-    .replace(/^(?!<)(.+)$/gm, '<p class="mirror-para">$1</p>')
-    // Clean up empty paragraphs
-    .replace(/<p class="mirror-para"><\/p>/g, "");
-}
-
-// ─────────────────────────────────────────────
-// 7. UTILITIES
-// ─────────────────────────────────────────────
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror   = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+});
