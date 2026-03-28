@@ -486,6 +486,7 @@ class MirrorResponse(BaseModel):
     voice_note_audio: str | None   # base64 WAV audio — Mirror's enthusiastic reply
     voice_note_script: str | None  # plain text of what Mirror says (for debugging/captions)
     conversation_context: dict     # what Mirror understood from the user's audio
+    products_data: dict | None = None  # structured product data with verified URLs
 
 
 class TranscribeRequest(BaseModel):
@@ -780,7 +781,8 @@ async def analyze_look(request: AnalyzeRequest):
         mirror_response=mirror_text,
         voice_note_audio=voice_audio,       # base64 WAV — play directly in UI with <audio> tag
         voice_note_script=voice_script,     # text transcript for captions / fallback
-        conversation_context=conversation   # what Mirror understood from user's voice
+        conversation_context=conversation,  # what Mirror understood from user's voice
+        products_data=all_products,         # structured product data with verified URLs
     )
 
 

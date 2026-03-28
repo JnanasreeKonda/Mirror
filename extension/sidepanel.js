@@ -486,15 +486,48 @@ function displayResults(data) {
     scrollDiv.appendChild(voiceSection);
   }
 
-  // Mirror Response (formatted text with products)
+  // Mirror Response — editorial text (strip PRODUCT| and COMPLEMENTARY| lines, render text only)
   if (data.mirror_response) {
     const mirrorDiv = document.createElement("div");
     mirrorDiv.style.cssText = "color:#2d1b2e; white-space:pre-wrap; font-size:1.05rem; line-height:1.7;";
-    
-    // Parse and format the mirror response
     const formatted = formatMirrorResponse(data.mirror_response);
     mirrorDiv.innerHTML = formatted;
     scrollDiv.appendChild(mirrorDiv);
+  }
+
+  // Render product cards from structured JSON data (bypasses LLM text parsing)
+  if (data.products_data) {
+    for (const [garment, garmentData] of Object.entries(data.products_data)) {
+      // Main products (exact + similar)
+      const mainProducts = [
+        ...(garmentData.main?.exact || []),
+        ...(garmentData.main?.similar || [])
+      ];
+      for (const p of mainProducts) {
+        const cardEl = createProductCard(
+          p.name || '', p.price || '', p.source || '',
+          p.link || '#', p.thumbnail || '', '', false
+        );
+        scrollDiv.appendChild(cardEl);
+      }
+
+      // Complementary products
+      if (garmentData.complementary && garmentData.complementary.length > 0) {
+        const compHeader = document.createElement("div");
+        compHeader.innerHTML = '<div style="font-size:1.3rem; letter-spacing:1px; color:#2d1b2e; margin:28px 0 20px; font-weight:700; line-height:1.5; font-family:Cormorant Garamond,serif; background:linear-gradient(135deg, rgba(139,90,142,0.12), rgba(166,124,159,0.08)); padding:14px 20px; border-radius:12px; border-left:5px solid #8b5a8e; box-shadow:0 4px 12px rgba(139,90,142,0.15);">Here are more recommendations to complete this look</div>';
+        scrollDiv.appendChild(compHeader);
+
+        for (const comp of garmentData.complementary) {
+          const cp = comp.product || comp;
+          const cardEl = createProductCard(
+            `${comp.type || 'Accessory'}: ${cp.name || ''}`,
+            cp.price || '', cp.source || '',
+            cp.link || '#', cp.thumbnail || '', '', true
+          );
+          scrollDiv.appendChild(cardEl);
+        }
+      }
+    }
   }
 
   outputPanel.appendChild(scrollDiv);
@@ -505,24 +538,9 @@ function formatMirrorResponse(text) {
   let html = '';
   
   for (let line of lines) {
-    // Parse PRODUCT lines
-    if (line.startsWith('PRODUCT|')) {
-      const parts = line.substring(8).split('|');
-      if (parts.length >= 6) {
-        const [name, price, source, url, thumbnail, description] = parts;
-        html += createProductCard(name, price, source, url, thumbnail, description, false);
-        continue;
-      }
-    }
-    
-    // Parse COMPLEMENTARY lines
-    if (line.startsWith('COMPLEMENTARY|')) {
-      const parts = line.substring(14).split('|');
-      if (parts.length >= 7) {
-        const [itemType, name, price, source, url, thumbnail, description] = parts;
-        html += createProductCard(`${itemType}: ${name}`, price, source, url, thumbnail, description, true);
-        continue;
-      }
+    // Skip PRODUCT and COMPLEMENTARY lines — rendered from structured JSON data
+    if (line.startsWith('PRODUCT|') || line.startsWith('COMPLEMENTARY|')) {
+      continue;
     }
     
     // Format headers
@@ -531,9 +549,8 @@ function formatMirrorResponse(text) {
       continue;
     }
     
-    // Format "Complete The Look"
+    // Skip "Complete The Look" — rendered by structured JSON renderer
     if (line.includes('**Complete The Look:**')) {
-      html += '<div style="font-size:1.3rem; letter-spacing:1px; color:#2d1b2e; margin:28px 0 20px; font-weight:700; line-height:1.5; font-family:Cormorant Garamond,serif; background:linear-gradient(135deg, rgba(139,90,142,0.12), rgba(166,124,159,0.08)); padding:14px 20px; border-radius:12px; border-left:5px solid #8b5a8e; box-shadow:0 4px 12px rgba(139,90,142,0.15);">Here are more recommendations to complete this look</div>';
       continue;
     }
     
@@ -554,11 +571,46 @@ function formatMirrorResponse(text) {
 
 function createProductCard(name, price, source, url, thumbnail, description, isComplementary) {
   const borderColor = isComplementary ? 'rgba(139,90,142,0.3)' : 'rgba(166,124,159,0.25)';
-  const glowColor = isComplementary ? 'rgba(139,90,142,0.25)' : 'rgba(166,124,159,0.2);'
-  
-  const imageHtml = thumbnail && thumbnail.trim() 
-    ? `<div style="width:225px; height:285px; flex-shrink:0; background:#ffffff; border-radius:16px; overflow:hidden; display:flex; align-items:center; justify-content:center; transition:all 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:0 8px 24px rgba(139,90,142,0.15); border:1px solid rgba(139,90,142,0.1);"><img src="${thumbnail}" style="width:100%; height:100%; object-fit:cover; transition:all 0.4s ease;" onmouseover="this.style.transform='scale(1.08)'; this.parentElement.style.boxShadow='0 12px 32px rgba(139,90,142,0.25)'" onmouseout="this.style.transform='scale(1)'; this.parentElement.style.boxShadow='0 8px 24px rgba(139,90,142,0.15)'" onerror="this.parentElement.innerHTML='<div style=\\"font-size:3.5rem; color:rgba(139,90,142,0.3);\\">\uD83D\uDECD\uFE0F</div>'"></div>`
-    : `<div style="width:225px; height:285px; flex-shrink:0; background:#ffffff; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:3.5rem; color:rgba(139,90,142,0.3); box-shadow:0 8px 24px rgba(139,90,142,0.15); border:1px solid rgba(139,90,142,0.1);">\uD83D\uDECD\uFE0F</div>`;
-  
-  return `<div class="product-card" style="display:flex; flex-direction:row; gap:20px; align-items:flex-start; margin:0 0 48px 0; transition:all 0.4s cubic-bezier(0.4, 0, 0.2, 1); animation:slideIn 0.6s ease both;" onmouseover="this.style.transform='translateX(8px)'" onmouseout="this.style.transform='translateX(0)'">${imageHtml}<div style="flex:1; display:flex; flex-direction:column; justify-content:flex-start; min-width:0; padding:10px 0;"><div style="font-size:1.1rem; font-weight:700; color:#2d1b2e; line-height:1.4; margin-bottom:10px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; animation:fadeIn 0.5s ease 0.1s both;">${name}</div><div style="font-size:1.4rem; color:#8b5a8e; font-weight:800; margin-bottom:8px; animation:fadeIn 0.5s ease 0.2s both;">${price}</div><div style="font-size:0.9rem; color:#5a4a5c; font-weight:600; margin-bottom:14px; opacity:0.85; animation:fadeIn 0.5s ease 0.3s both;">${source}</div><a href="${url}" target="_blank" rel="noopener noreferrer" style="display:inline-block; font-size:0.7rem; letter-spacing:2.5px; text-transform:uppercase; color:white; text-decoration:none; padding:12px 24px; border-radius:10px; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background:linear-gradient(135deg, #8b5a8e 0%, #a67c9f 100%); text-align:center; font-weight:700; box-shadow:0 6px 18px ${glowColor}; border:1px solid ${borderColor}; animation:fadeIn 0.5s ease 0.4s both; align-self:flex-start; margin-bottom:32px;" onmouseover="this.style.transform='translateY(-4px) scale(1.03)'; this.style.boxShadow='0 10px 28px rgba(139,90,142,0.4)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 18px ${glowColor}'">SHOP NOW \u2197</a></div></div>`;
+  const glowColor = isComplementary ? 'rgba(139,90,142,0.25)' : 'rgba(166,124,159,0.2)';
+
+  // Sanitize thumbnail URL to prevent HTML breakage
+  const safeThumbnail = (thumbnail || '').trim().replace(/"/g, '&quot;');
+
+  const card = document.createElement('div');
+  card.className = 'product-card';
+  card.style.cssText = 'display:flex; flex-direction:row; gap:0; align-items:stretch; margin:0 0 36px 0; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 24px rgba(139,90,142,0.12); border:1px solid rgba(139,90,142,0.1); transition:all 0.4s cubic-bezier(0.4,0,0.2,1); animation:slideIn 0.6s ease both; min-height:220px;';
+  card.onmouseover = function() { this.style.transform = 'translateY(-4px)'; this.style.boxShadow = '0 12px 32px rgba(139,90,142,0.2)'; };
+  card.onmouseout = function() { this.style.transform = 'translateY(0)'; this.style.boxShadow = '0 8px 24px rgba(139,90,142,0.12)'; };
+
+  // Left: Image (50% width)
+  const imgWrap = document.createElement('div');
+  imgWrap.style.cssText = 'width:50%; flex-shrink:0; background:#f8f5f2; display:flex; align-items:center; justify-content:center; overflow:hidden;';
+
+  if (safeThumbnail) {
+    const img = document.createElement('img');
+    img.src = safeThumbnail;
+    img.style.cssText = 'width:100%; height:100%; object-fit:cover; transition:transform 0.4s ease;';
+    img.onmouseover = function() { this.style.transform = 'scale(1.06)'; };
+    img.onmouseout = function() { this.style.transform = 'scale(1)'; };
+    img.onerror = function() { this.parentElement.innerHTML = '<div style="font-size:3rem; color:rgba(139,90,142,0.25);">🛍️</div>'; };
+    imgWrap.appendChild(img);
+  } else {
+    imgWrap.innerHTML = '<div style="font-size:3rem; color:rgba(139,90,142,0.25);">🛍️</div>';
+  }
+  card.appendChild(imgWrap);
+
+  // Right: Details (50% width)
+  const details = document.createElement('div');
+  details.style.cssText = 'width:50%; display:flex; flex-direction:column; justify-content:center; padding:20px 18px; gap:6px;';
+
+  details.innerHTML = `
+    <div style="font-size:1.05rem; font-weight:700; color:#2d1b2e; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${name}</div>
+    <div style="font-size:1.35rem; color:#8b5a8e; font-weight:800;">${price}</div>
+    <div style="font-size:0.85rem; color:#5a4a5c; font-weight:600; opacity:0.85;">${source}</div>
+    <a href="${url}" target="_blank" rel="noopener noreferrer" style="display:inline-block; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:white; text-decoration:none; padding:10px 20px; border-radius:8px; background:linear-gradient(135deg, #8b5a8e 0%, #a67c9f 100%); text-align:center; font-weight:700; box-shadow:0 4px 14px ${glowColor}; border:1px solid ${borderColor}; align-self:flex-start; margin-top:8px; transition:all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(139,90,142,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 14px ${glowColor}'">SHOP NOW ↗</a>
+  `;
+  card.appendChild(details);
+
+  // Return as DOM element (we'll handle this in the caller)
+  return card;
 }
