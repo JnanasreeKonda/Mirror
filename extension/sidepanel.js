@@ -117,6 +117,13 @@ let analyserNode = null;
 let waveformAnimationFrameId = null;
 let activeMicStream = null;
 
+// Session management for conversation history
+let sessionId = localStorage.getItem('mirror_session_id');
+if (!sessionId) {
+  sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  localStorage.setItem('mirror_session_id', sessionId);
+}
+
 // DOM Elements
 const micBtn = document.getElementById("micBtn");
 const tickBtn = document.getElementById("tickBtn");
@@ -278,13 +285,15 @@ async function transcribeToTextField(blob) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          audio_data: base64Audio,
-          mime_type: mimeType
+          audio_data: lastRecordedAudioBase64,
+          mime_type: lastRecordedAudioMimeType,
+          text_input: "",
+          session_id: sessionId,
         }),
       });
       const data = await response.json();
       // Populate the text field with the transcript
-      userInput.value = data.conversation_context?.raw_transcript_summary || "";
+      userInput.value = data.transcript || "";
       userInput.placeholder = "Seek the extraordinary...";
       setStatus("READY");
     } catch (err) {
@@ -295,7 +304,8 @@ async function transcribeToTextField(blob) {
 }
 
 // 5. Final Submit Logic (When clicking "Find My Look")
-document.getElementById("sendBtn").addEventListener("click", async () => {
+const sendBtn = document.getElementById("sendBtn");
+sendBtn.addEventListener("click", async () => {
   if (!capturedImage) {
     setStatus("CAPTURE SCREENSHOT FIRST");
     return;
@@ -304,19 +314,18 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
   const text = (userInput.value || "").trim();
 
   const payload = {
-    image_data: capturedImage,
+    screenshot_data: capturedImage,
     text_input: text,
-    audio_data: "",
-    mime_type: "",
+    session_id: sessionId,
   };
 
-  if (!text && lastRecordedAudioBase64) {
-    payload.audio_data = lastRecordedAudioBase64;
-    payload.mime_type = lastRecordedAudioMimeType || "audio/webm";
-  }
-
   try {
-    setStatus("ANALYZING");
+    // Add glow effect to button
+    sendBtn.style.background = "var(--gold)";
+    sendBtn.style.color = "var(--onyx)";
+    sendBtn.style.boxShadow = "0 0 20px rgba(201,168,76,0.6)";
+    
+    setStatus("FINDING YOUR PERFECT LOOK");
     const response = await fetch(`${BACKEND}/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -330,9 +339,141 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
 
     const data = await response.json();
     console.log("Analyze response:", data);
+    displayResults(data);
     setStatus("DONE");
   } catch (err) {
     console.error("Analyze error:", err);
     setStatus("ERROR");
   }
 });
+
+// 6. Display Results with Voice Audio and Products
+function displayResults(data) {
+  const outputPanel = document.getElementById("outputPanel");
+  if (!outputPanel) return;
+
+  outputPanel.style.display = "flex";
+  outputPanel.innerHTML = "";
+
+  const scrollDiv = document.createElement("div");
+  scrollDiv.style.cssText = "overflow-y:auto; padding:14px; flex:1; font-size:0.72rem; line-height:1.7;";
+
+  // Voice Note Audio
+  if (data.voice_note_audio) {
+    const voiceSection = document.createElement("div");
+    voiceSection.style.cssText = "margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid rgba(201,168,76,0.2);";
+    
+    const voiceLabel = document.createElement("div");
+    voiceLabel.textContent = "🎙️ MIRROR SPEAKS";
+    voiceLabel.style.cssText = "font-size:0.55rem; letter-spacing:4px; text-transform:uppercase; color:#c9a84c; margin-bottom:8px;";
+    voiceSection.appendChild(voiceLabel);
+
+    if (data.voice_note_script) {
+      const script = document.createElement("div");
+      script.textContent = data.voice_note_script;
+      script.style.cssText = "font-family:'Cormorant Garamond',serif; font-style:italic; font-size:0.9rem; color:rgba(245,240,232,0.65); margin-bottom:8px; line-height:1.5;";
+      voiceSection.appendChild(script);
+    }
+
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.autoplay = true;
+    audio.style.cssText = "width:100%; height:28px; filter:invert(1) sepia(1) saturate(0.4) hue-rotate(5deg); opacity:0.8;";
+    audio.src = `data:audio/wav;base64,${data.voice_note_audio}`;
+    voiceSection.appendChild(audio);
+
+    scrollDiv.appendChild(voiceSection);
+  }
+
+  // Mirror Response (formatted text with products)
+  if (data.mirror_response) {
+    const mirrorDiv = document.createElement("div");
+    mirrorDiv.style.cssText = "color:#f5f0e8; white-space:pre-wrap;";
+    
+    // Parse and format the mirror response
+    const formatted = formatMirrorResponse(data.mirror_response);
+    mirrorDiv.innerHTML = formatted;
+    scrollDiv.appendChild(mirrorDiv);
+  }
+
+  outputPanel.appendChild(scrollDiv);
+}
+
+function formatMirrorResponse(text) {
+  const lines = text.split('\n');
+  let html = '';
+  
+  for (let line of lines) {
+    // Parse PRODUCT lines
+    if (line.startsWith('PRODUCT|')) {
+      const parts = line.substring(8).split('|');
+      if (parts.length >= 6) {
+        const [name, price, source, url, thumbnail, description] = parts;
+        html += createProductCard(name, price, source, url, thumbnail, description, false);
+        continue;
+      }
+    }
+    
+    // Parse COMPLEMENTARY lines
+    if (line.startsWith('COMPLEMENTARY|')) {
+      const parts = line.substring(14).split('|');
+      if (parts.length >= 7) {
+        const [itemType, name, price, source, url, thumbnail, description] = parts;
+        html += createProductCard(`${itemType}: ${name}`, price, source, url, thumbnail, description, true);
+        continue;
+      }
+    }
+    
+    // Format headers
+    if (line.startsWith('### ')) {
+      html += `<h3 style="font-family:Cormorant Garamond,serif; font-size:1rem; color:#e8c97a; margin:16px 0 10px; letter-spacing:1px;">${line.substring(4)}</h3>`;
+      continue;
+    }
+    
+    // Format "Complete The Look"
+    if (line.includes('**Complete The Look:**')) {
+      html += '<div style="font-size:0.55rem; letter-spacing:3px; text-transform:uppercase; color:#c9a84c; margin:20px 0 12px; font-weight:600;">Complete The Look:</div>';
+      continue;
+    }
+    
+    // Format horizontal rules
+    if (line.trim() === '---') {
+      html += '<hr style="border:none; border-top:1px solid rgba(201,168,76,0.2); margin:16px 0;">';
+      continue;
+    }
+    
+    // Regular text
+    if (line.trim()) {
+      html += `${line}<br>`;
+    }
+  }
+  
+  return html;
+}
+
+function createProductCard(name, price, source, url, thumbnail, description, isComplementary) {
+  const cardStyle = isComplementary 
+    ? 'background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.25);'
+    : 'background:rgba(245,240,232,0.03); border:1px solid rgba(201,168,76,0.15);';
+  
+  // Create image element with better fallback - taller for better visibility
+  const imageHtml = thumbnail && thumbnail.trim() 
+    ? `<div style="width:140px; height:180px; flex-shrink:0; background:rgba(201,168,76,0.1); border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+         <img src="${thumbnail}" style="width:100%; height:100%; object-fit:cover;" 
+              onerror="this.parentElement.innerHTML='<div style=\"font-size:2.5rem; color:rgba(201,168,76,0.3);\">🛍️</div>'">
+       </div>`
+    : `<div style="width:140px; height:180px; flex-shrink:0; background:rgba(201,168,76,0.1); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:2.5rem; color:rgba(201,168,76,0.3);">🛍️</div>`;
+  
+  return `
+    <div style="${cardStyle} border-radius:6px; padding:10px; margin:8px 0; display:flex; flex-direction:row; gap:10px; align-items:center; transition:all 0.2s;">
+      ${imageHtml}
+      <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px;">
+        <div style="font-size:0.75rem; font-weight:600; color:#f5f0e8; line-height:1.2;">${name}</div>
+        <div style="font-size:0.65rem; color:#c9a84c;">${price} • ${source}</div>
+        <a href="${url}" target="_blank" rel="noopener noreferrer" style="display:inline-block; font-size:0.5rem; letter-spacing:2px; text-transform:uppercase; color:#c9a84c; text-decoration:none; border:1px solid rgba(201,168,76,0.3); padding:6px 12px; border-radius:3px; transition:all 0.2s; background:rgba(201,168,76,0.05); text-align:center; margin-top:4px; width:fit-content;">
+          SHOP NOW ↗
+        </a>
+      </div>
+    </div>
+  `;
+}

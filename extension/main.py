@@ -21,7 +21,8 @@ except Exception:
     load_dotenv = None
 
 if load_dotenv:
-    load_dotenv()
+    env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+    load_dotenv(dotenv_path=env_path)
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 SERP_API_KEY   = os.environ.get("SERP_API_KEY")
@@ -44,6 +45,10 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 app = FastAPI(title="Mirror Backend")
 
+# Session storage for conversation history
+conversation_history = {}
+# Format: {"session_id": {"messages": [], "last_analysis": {}, "last_products": {}}}
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -57,6 +62,12 @@ app.add_middleware(
 #    user actually wants before we do image analysis.
 #    Handles budget, color prefs, follow-up questions, etc.
 # ─────────────────────────────────────────────
+
+TRANSCRIBE_PROMPT = """
+Transcribe the audio exactly as spoken. Return ONLY the verbatim transcript text.
+Do not add any interpretation, summary, or analysis.
+Just return the exact words the user said.
+"""
 
 CONVERSATION_PROMPT = """
 You are Mirror — a warm, witty fashion-director best friend.
@@ -113,7 +124,13 @@ Return ONLY valid JSON. No markdown, no explanation, no code fences. Raw JSON on
       "details": "defining construction details — e.g. puff sleeve, raw hem, notch lapel, tortoiseshell buttons",
       "print": "precise pattern — e.g. ditsy liberty floral micro-scale allover, wide breton stripe, OR 'solid' if none",
       "exact_query": "hyper-specific Google Shopping query — include ALL: color + print + silhouette + garment type + key detail + gender. Example: 'dusty rose ditsy floral wrap midi dress puff sleeve women'",
-      "fallback_query": "broader query — drop print and details, keep only color + garment type + gender. Example: 'dusty rose midi dress women'"
+      "fallback_query": "broader query — drop print and details, keep only color + garment type + gender. Example: 'dusty rose midi dress women'",
+      "complementary_items": [
+        {{
+          "item_type": "e.g. ankle boots, crossbody bag, statement earrings",
+          "search_query": "specific search query for this complementary item with color/style that pairs well. Example: 'tan leather ankle boots women' or 'gold hoop earrings'"
+        }}
+      ]
     }}
   ],
   "budget_mentioned": null
@@ -127,6 +144,8 @@ RULES:
 - If the user's voice mentions a budget like 'under $50', set budget_mentioned to that number (integer only)
 - Identify gender from: garment cut, styling, body shape if visible, context clues
 - Identify demographic from: silhouette choices, styling, color palette, trend signals
+- complementary_items should include 3 items that would pair well with this garment (shoes, bags, accessories, or other clothing)
+- Each complementary item needs a specific search query that will find products that coordinate with the main item's color/style
 
 If the image is unclear or has no clothing:
 {{"error": "I need a cleaner frame — pause the video on a sharp shot and try again!"}}
@@ -151,44 +170,37 @@ Write the final Mirror response using EXACTLY this format — no deviations:
 
 ---
 
-🪞 Mirror Sees:
 [scene_summary from analysis]
-Gender: [gender] | Demographic: [demographic]
-
-🛍️ Shop The Look:
-
-[For each garment, list its products in this format:]
+[gender] | [demographic]
 
 ### [Garment Type — color + key detail]
 
-✅ Exact Matches:
-**[Product name]** — [price]
-[direct product URL — exact link from results, nothing invented]
-> Why it matches: [one sharp phrase about what specifically matches]
+[For each product, use this EXACT format with pipe separators:]
+PRODUCT|[Product name]|[price]|[source]|[direct URL]|[thumbnail URL]|[one sharp phrase]
 
-[repeat for each exact match product]
+[repeat for each main product - up to 5]
 
-🔀 Similar Picks:
-**[Product name]** — [price]
-[direct product URL]
-> Why it's close: [one sharp phrase about what's similar and what differs]
+**Complete The Look:**
 
-[repeat for each similar product]
+[For each complementary item:]
+COMPLEMENTARY|[item type]|[Product name]|[price]|[source]|[direct URL]|[thumbnail URL]|[one sharp phrase]
+
+[repeat for each complementary item - up to 3]
 
 ---
 
-💡 Stylist Note: [One sharp, specific sentence on how to complete or elevate this look]
+[One sharp, specific sentence on how to complete or elevate this look]
 
 ---
 
 STRICT RULES:
-- Show up to 5 products total per garment (exact + similar combined)
+- Use PRODUCT| prefix for main items and COMPLEMENTARY| prefix for complementary items
+- Each product line must have ALL fields separated by | (pipe character)
 - ONLY use URLs from the results provided — never invent or guess URLs
-- If a product has no link, skip it entirely
-- Exact matches come first, similar picks after
-- If all results are similar (no exact), label them all under Similar Picks
+- URLs must be complete and properly formatted
+- If a product has no link or thumbnail, use empty string but keep the pipe separator
 - Do not add any text outside this format
-- Tone: confident, editorial, precise — Vogue market editor energy
+- Tone: confident, editorial, precise
 """
 
 # ─────────────────────────────────────────────
@@ -274,16 +286,36 @@ def search_products(exact_query: str, fallback_query: str, max_price: float = 0)
             if max_price and max_price > 0 and price > max_price:
                 continue
 
-            link = item.get("link") or item.get("product_link", "")
+            # Get the actual product link - try multiple fields in priority order
+            # 1. product_link - direct retailer URL
+            # 2. link - may be Google redirect but sometimes direct
+            link = item.get("product_link") or item.get("link", "")
+            
+            # Get product thumbnail image
+            thumbnail = item.get("thumbnail", "")
+            
+            # Debug: print what we're getting
+            if link:
+                print(f"    Product: {item.get('title', 'N/A')[:50]}")
+                print(f"    Source: {item.get('source', 'N/A')}")
+                print(f"    Link: {link[:80]}...")
+                print(f"    Thumbnail: {thumbnail[:60] if thumbnail else 'None'}..." if thumbnail else "    Thumbnail: None")
+            
             if not link or link in seen_links:
                 continue
 
             seen_links.add(link)
+            
+            # Clean up the link - ensure it's a proper URL
+            if link and not link.startswith("http"):
+                link = "https://" + link
+            
             results.append({
                 "name":   item.get("title", ""),
                 "price":  item.get("price", "N/A"),
                 "link":   link,
                 "source": item.get("source", ""),
+                "thumbnail": thumbnail,
             })
 
             if len(results) >= limit:
@@ -291,14 +323,15 @@ def search_products(exact_query: str, fallback_query: str, max_price: float = 0)
 
         return results
 
-    exact_results = serp_search(exact_query, limit=5)
+    # Get 2 main products (exact + similar combined)
+    exact_results = serp_search(exact_query, limit=2)
     print(f"  Exact  '{exact_query}' → {len(exact_results)} results")
 
     similar_results = []
-    remaining = 5 - len(exact_results)
+    remaining = 2 - len(exact_results)
 
     if remaining > 0:
-        all_fallback = serp_search(fallback_query, limit=remaining + 3)
+        all_fallback = serp_search(fallback_query, limit=remaining + 5)
         exact_links = {r["link"] for r in exact_results}
         for item in all_fallback:
             if item["link"] not in exact_links:
@@ -443,11 +476,10 @@ def generate_voice_note(script: str) -> str | None:
 # 8. REQUEST / RESPONSE MODELS
 # ─────────────────────────────────────────────
 
-class MirrorRequest(BaseModel):
-    image_data: str
-    audio_data: str = ""        # base64 encoded audio from user's voice note
-    mime_type:  str = ""        # e.g. "audio/webm" or "audio/mp4"
-    text_input: str = ""        # typed user input (alternative to audio)
+class AnalyzeRequest(BaseModel):
+    screenshot_data: str
+    text_input: str = ""
+    session_id: str = "default"
 
 class MirrorResponse(BaseModel):
     mirror_response: str           # editorial formatted text (unchanged)
@@ -458,30 +490,40 @@ class MirrorResponse(BaseModel):
 
 class TranscribeRequest(BaseModel):
     audio_data: str = ""
-    mime_type: str = ""
     text_input: str = ""
+    mime_type: str = "audio/webm"
+    session_id: str = "default"
 
 
 class TranscribeResponse(BaseModel):
-    conversation_context: dict
+    transcript: str
 
 # ─────────────────────────────────────────────
 # 9. CORE ENDPOINT
 # ─────────────────────────────────────────────
 
 @app.post("/analyze", response_model=MirrorResponse)
-async def analyze_look(request: MirrorRequest):
+async def analyze_look(request: AnalyzeRequest):
+    
+    # Initialize session if needed
+    session_id = request.session_id
+    if session_id not in conversation_history:
+        conversation_history[session_id] = {
+            "messages": [],
+            "last_analysis": {},
+            "last_products": {}
+        }
 
-    # ── Decode image ──────────────────────────────────────────────────────
+    # ── Decode image ──────────────────────────────────────────────────────────────────────
     try:
-        _, image_b64 = request.image_data.split(",", 1)
+        _, image_b64 = request.screenshot_data.split(",", 1)
         image_bytes  = base64.b64decode(image_b64)
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid image_data format.")
+        raise HTTPException(status_code=400, detail="Invalid screenshot_data format.")
 
     # ── Decode audio (optional) ───────────────────────────────────────────
     audio_bytes = b""
-    if request.audio_data:
+    if hasattr(request, 'audio_data') and request.audio_data:
         try:
             audio_bytes = base64.b64decode(request.audio_data)
         except Exception:
@@ -522,7 +564,7 @@ async def analyze_look(request: MirrorRequest):
         try:
             audio_part = types.Part.from_bytes(
                 data=audio_bytes,
-                mime_type=request.mime_type or "audio/webm"
+                mime_type=getattr(request, 'mime_type', None) or "audio/webm"
             )
             conv_response = client.models.generate_content(
                 model=FLASH_MODEL,
@@ -543,11 +585,29 @@ async def analyze_look(request: MirrorRequest):
     # ══════════════════════════════════════════
 
     # Build dynamic context instructions based on what the user said
+    # Include previous conversation history for follow-ups
     conversation_context = ""
     focus_instruction = ""
-
+    
+    # Add previous messages to context
+    session = conversation_history[session_id]
+    if session["messages"]:
+        conversation_context += "Previous conversation:\n"
+        for msg in session["messages"][-3:]:
+            conversation_context += f"- User: {msg.get('user', '')}\n"
+            if msg.get('response'):
+                conversation_context += f"- Mirror: {msg.get('response', '')[:100]}...\n"
+        conversation_context += "\n"
+    
+    # Add current message
     if conversation.get("raw_transcript_summary") and conversation["raw_transcript_summary"] != "No audio provided":
-        conversation_context = f"The user said: \"{conversation['raw_transcript_summary']}\"\n"
+        conversation_context += f"Current request: \"{conversation['raw_transcript_summary']}\"\n"
+        
+        # Store in history
+        session["messages"].append({
+            "user": conversation["raw_transcript_summary"],
+            "timestamp": json.dumps({"intent": conversation.get("user_intent")})
+        })
 
     if conversation.get("color_preference"):
         conversation_context += f"IMPORTANT: The user wants to see this in {conversation['color_preference']} — adjust search queries for that color.\n"
@@ -603,7 +663,7 @@ async def analyze_look(request: MirrorRequest):
         )
 
     # ══════════════════════════════════════════
-    # STEP 2: Two-pass product search per item
+    # STEP 2: Product search - 5 main + 3 complementary per item
     # ══════════════════════════════════════════
     budget = conversation.get("budget") or analysis.get("budget_mentioned") or 0
     items  = analysis.get("items", [])
@@ -613,22 +673,51 @@ async def analyze_look(request: MirrorRequest):
         garment        = item.get("garment_type", "item")
         exact_query    = item.get("exact_query", "")
         fallback_query = item.get("fallback_query", "")
+        complementary  = item.get("complementary_items", [])
 
         if not exact_query:
             continue
 
         print(f"\nSearching for: {garment}")
-        results = search_products(
+        # Get 5 main products
+        main_results = search_products(
             exact_query=exact_query,
             fallback_query=fallback_query,
             max_price=budget
         )
-        all_products[garment] = results
+        
+        # Get 3 complementary items
+        complementary_results = []
+        for comp_item in complementary[:3]:  # Limit to 3
+            comp_query = comp_item.get("search_query", "")
+            comp_type = comp_item.get("item_type", "accessory")
+            if comp_query:
+                print(f"  + Complementary: {comp_type}")
+                comp_products = search_products(
+                    exact_query=comp_query,
+                    fallback_query=comp_query,
+                    max_price=budget
+                )
+                # Take only 1 product per complementary item
+                all_comp = comp_products.get("exact", []) + comp_products.get("similar", [])
+                if all_comp:
+                    complementary_results.append({
+                        "type": comp_type,
+                        "product": all_comp[0]
+                    })
+        
+        all_products[garment] = {
+            "main": main_results,
+            "complementary": complementary_results
+        }
 
     # ══════════════════════════════════════════
     # STEP 3: Gemini formats the editorial response
     # ══════════════════════════════════════════
     user_context_str = json.dumps(conversation, indent=2)
+
+    print("\n=== PRODUCTS DATA ===")
+    print(json.dumps(all_products, indent=2)[:500])  # First 500 chars
 
     format_prompt = FORMAT_PROMPT_TEMPLATE.format(
         analysis=json.dumps(analysis, indent=2),
@@ -643,6 +732,18 @@ async def analyze_look(request: MirrorRequest):
             contents=[format_prompt],
         )
         mirror_text = step3_response.text
+        
+        print("\n=== FORMATTED RESPONSE ===")
+        print(mirror_text[:800])  # First 800 chars
+        print("\n")
+        
+        # Store analysis and products in session
+        session["last_analysis"] = analysis
+        session["last_products"] = all_products
+        
+        # Update last message with response
+        if session["messages"]:
+            session["messages"][-1]["response"] = mirror_text[:200]
 
     except Exception as e:
         print(f"Step 3 error: {e}")
@@ -685,31 +786,10 @@ async def analyze_look(request: MirrorRequest):
 
 @app.post("/transcribe", response_model=TranscribeResponse)
 async def transcribe(request: TranscribeRequest):
-    conversation = {
-        "user_intent": "fresh_look",
-        "focus_item": None,
-        "budget": None,
-        "color_preference": None,
-        "style_preference": None,
-        "follow_up_question": None,
-        "raw_transcript_summary": "No audio provided"
-    }
+    transcript = ""
 
     if request.text_input:
-        try:
-            conv_response = client.models.generate_content(
-                model=FLASH_MODEL,
-                config=types.GenerateContentConfig(temperature=0.1),
-                contents=[CONVERSATION_PROMPT, request.text_input],
-            )
-            raw_conv = conv_response.text.strip()
-            if raw_conv.startswith("```"):
-                raw_conv = raw_conv.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-            conversation = json.loads(raw_conv)
-            conversation["raw_transcript_summary"] = request.text_input
-        except Exception as e:
-            print(f"Transcribe parsing failed for text_input (non-fatal): {e}")
-        return TranscribeResponse(conversation_context=conversation)
+        return TranscribeResponse(transcript=request.text_input)
 
     audio_bytes = b""
     if request.audio_data:
@@ -724,19 +804,17 @@ async def transcribe(request: TranscribeRequest):
                 data=audio_bytes,
                 mime_type=request.mime_type or "audio/webm"
             )
-            conv_response = client.models.generate_content(
+            transcribe_response = client.models.generate_content(
                 model=FLASH_MODEL,
-                config=types.GenerateContentConfig(temperature=0.1),
-                contents=[CONVERSATION_PROMPT, audio_part],
+                config=types.GenerateContentConfig(temperature=0.0),
+                contents=[TRANSCRIBE_PROMPT, audio_part],
             )
-            raw_conv = conv_response.text.strip()
-            if raw_conv.startswith("```"):
-                raw_conv = raw_conv.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-            conversation = json.loads(raw_conv)
+            transcript = transcribe_response.text.strip()
         except Exception as e:
-            print(f"Transcribe parsing failed for audio (non-fatal): {e}")
+            print(f"Transcription failed (non-fatal): {e}")
+            transcript = "[Transcription failed]"
 
-    return TranscribeResponse(conversation_context=conversation)
+    return TranscribeResponse(transcript=transcript)
 
 
 # ─────────────────────────────────────────────

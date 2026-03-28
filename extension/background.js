@@ -26,6 +26,7 @@ chrome.commands.onCommand.addListener((command) => {
       const tab = tabs[0];
       if (!tab) return;
 
+      // Always capture screenshot when Ctrl+Shift+S is pressed
       chrome.tabs.captureVisibleTab(tab.windowId, { format: "jpeg", quality: 70 }, (dataUrl) => {
         if (chrome.runtime.lastError) {
           console.error("Capture error:", chrome.runtime.lastError.message);

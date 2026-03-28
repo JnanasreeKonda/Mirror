@@ -582,15 +582,23 @@
             letter-spacing: 12px; text-transform: uppercase;
         }
         .brand em { color: var(--gold); font-style: normal; }
+        .tagline {
+            font-size: 0.5rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-top: 8px;
+            opacity: 0.9;
+        }
 
-        .canvas-wrap { margin: 10px 20px 8px; flex-shrink: 0; height: 160px; position: relative; }
+        .canvas-wrap { margin: 10px 20px 8px; flex-shrink: 0; height: 300px; position: relative; }
         .canvas-inner {
             width: 100%; height: 100%;
             background: var(--obsidian);
             border: 1px solid var(--border);
             display: flex; align-items: center; justify-content: center;
         }
-        #preview { width: 100%; height: 100%; object-fit: cover; display: none; }
+        #preview { width: 100%; height: 100%; object-fit: contain; display: none; }
         .empty-label { font-size: 0.48rem; letter-spacing: 5px; text-transform: uppercase; opacity: 0.35; }
 
         #outputPanel {
@@ -631,6 +639,7 @@
 
 <div class="header">
     <h1 class="brand">M<em>i</em>rror</h1>
+    <div class="tagline">Dress Like Nobody's Watching. Shop Like Everybody Is.</div>
 </div>
 
 <div class="canvas-wrap">
