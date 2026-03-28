@@ -1,3 +1,128 @@
+<!--<!DOCTYPE html>-->
+<!--<html lang="en">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+<!--    <title>Mirror | AI Stylist</title>-->
+<!--    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Montserrat:wght@200;400;600&display=swap" rel="stylesheet">-->
+<!--    <style>-->
+<!--        :root {-->
+<!--            &#45;&#45;onyx: #080808;-->
+<!--            &#45;&#45;obsidian: #111111;-->
+<!--            &#45;&#45;gold: #c9a84c;-->
+<!--            &#45;&#45;gold-light: #e8c97a;-->
+<!--            &#45;&#45;cream: #f5f0e8;-->
+<!--            &#45;&#45;border: rgba(201,168,76,0.2);-->
+<!--        }-->
+<!--        * { box-sizing: border-box; margin: 0; padding: 0; }-->
+
+<!--        body {-->
+<!--            background: var(&#45;&#45;onyx);-->
+<!--            color: var(&#45;&#45;cream);-->
+<!--            font-family: 'Montserrat', sans-serif;-->
+<!--            height: 100vh; overflow: hidden;-->
+<!--            display: flex; flex-direction: column;-->
+<!--        }-->
+
+<!--        /* ── METALLIC GOLD TEXT SHINE ── */-->
+<!--        .gold-text-shine {-->
+<!--            background: linear-gradient(to right, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fcf6ba 75%, #bf953f 100%);-->
+<!--            -webkit-background-clip: text;-->
+<!--            -webkit-text-fill-color: transparent;-->
+<!--            background-size: 200% auto;-->
+<!--            animation: shine 4s linear infinite;-->
+<!--            font-weight: 600;-->
+<!--            text-shadow: 0px 2px 4px rgba(0,0,0,0.3);-->
+<!--        }-->
+<!--        @keyframes shine { to { background-position: 200% center; } }-->
+
+<!--        /* ── HEADER ── */-->
+<!--        .header { padding: 20px 22px 0; z-index: 10; animation: riseIn 0.9s ease both; }-->
+<!--        .brand {-->
+<!--            font-family: 'Cormorant Garamond', serif; font-weight: 300;-->
+<!--            font-size: 2.4rem; letter-spacing: 12px; text-transform: uppercase;-->
+<!--        }-->
+<!--        .brand em { color: var(&#45;&#45;gold); font-style: normal; }-->
+<!--        .tagline { font-size: 0.45rem; letter-spacing: 3.5px; text-transform: uppercase; color: var(&#45;&#45;gold); margin-top: 7px; }-->
+
+<!--        /* ── CANVAS ── */-->
+<!--        .canvas-wrap { flex: 1; margin: 12px 22px 10px; position: relative; overflow: hidden; }-->
+<!--        .canvas-inner {-->
+<!--            width: 100%; height: 100%; background: var(&#45;&#45;obsidian);-->
+<!--            border: 1px solid var(&#45;&#45;border); display: flex; align-items: center; justify-content: center;-->
+<!--        }-->
+<!--        #preview { width:100%; height:100%; object-fit:cover; display:none; animation: imgReveal 1s ease both; }-->
+<!--        .empty-label { font-size:0.5rem; letter-spacing:5px; text-transform:uppercase; opacity: 0.4; }-->
+
+<!--        /* ── INSCRIPTION ZONE ── */-->
+<!--        .inscription-zone { padding: 0 22px 20px; z-index: 10; position: relative; }-->
+<!--        .chapter { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }-->
+<!--        .chapter-rule { flex:1; height:1px; background: var(&#45;&#45;border); }-->
+<!--        .chapter-label { font-size: 0.6rem; letter-spacing: 5px; text-transform: uppercase; }-->
+
+<!--        #user-input {-->
+<!--            width: 100%; background: transparent; border: none; outline: none;-->
+<!--            border-bottom: 1px solid var(&#45;&#45;border);-->
+<!--            font-family: 'Cormorant Garamond', serif; font-style: italic;-->
+<!--            font-size: 1.3rem; color: var(&#45;&#45;cream); padding: 10px 0; margin-bottom: 15px;-->
+<!--        }-->
+<!--        #user-input::placeholder { color: rgba(201, 168, 76, 0.6); }-->
+
+<!--        /* ── MIC ASSEMBLY ── */-->
+<!--        .mic-assembly { display: flex; align-items: center; gap: 15px; }-->
+<!--        .mic-orb {-->
+<!--            width: 50px; height: 50px; border-radius: 50%; border: 1px solid var(&#45;&#45;gold);-->
+<!--            display: flex; align-items: center; justify-content: center; cursor: pointer;-->
+<!--            background: radial-gradient(circle, rgba(201,168,76,0.2), transparent);-->
+<!--        }-->
+<!--        .mic-label { font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase; }-->
+<!--        .mic-sub { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.9rem; }-->
+
+<!--        @keyframes riseIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }-->
+<!--        @keyframes imgReveal { from{opacity:0;filter:blur(5px)} to{opacity:1;filter:blur(0)} }-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+
+<!--<div class="header">-->
+<!--    <h1 class="brand">M<em>i</em>rror</h1>-->
+<!--    <div class="tagline gold-text-shine">Dress Like Nobody's Watching. Shop Like Everybody Is.</div>-->
+<!--</div>-->
+
+<!--<div class="canvas-wrap">-->
+<!--    <div class="canvas-inner">-->
+<!--        <img id="preview" src="">-->
+<!--        <div class="empty-label" id="emptyState">Capture your context</div>-->
+<!--    </div>-->
+<!--</div>-->
+
+<!--<div class="inscription-zone">-->
+<!--    <div class="chapter">-->
+<!--        <div class="chapter-rule"></div>-->
+<!--        <div class="chapter-label gold-text-shine" id="chapterLabel">inscribe your desire</div>-->
+<!--        <div class="chapter-rule"></div>-->
+<!--    </div>-->
+
+<!--    <textarea id="user-input" rows="1" placeholder="Seek the extraordinary…"></textarea>-->
+
+<!--    <div class="mic-assembly">-->
+<!--        <div class="mic-orb" id="micBtn">-->
+<!--            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8c97a" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path></svg>-->
+<!--        </div>-->
+<!--        <div class="mic-copy">-->
+<!--&lt;!&ndash;            <div class="mic-label gold-text-shine" id="micLabel">Touch the orb to speak</div>&ndash;&gt;-->
+<!--            <div class="mic-sub gold-text-shine" id="micSub">Voice becomes intention</div>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--</div>-->
+
+<!--<div id="status" style="font-size: 10px; text-align: center; color: var(&#45;&#45;gold); margin-top: 10px; opacity: 0.5;">READY</div>-->
+
+<!--<script src="sidepanel.js"></script>-->
+<!--</body>-->
+<!--</html>-->
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,95 +132,371 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Montserrat:wght@200;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --onyx: #080808;
-            --obsidian: #111111;
-            --gold: #c9a84c;
-            --gold-light: #e8c97a;
-            --cream: #f5f0e8;
-            --border: rgba(201,168,76,0.2);
+            --onyx:      #080808;
+            --obsidian:  #111111;
+            --card:      #161616;
+            --gold:      #c9a84c;
+            --gold-light:#e8c97a;
+            --cream:     #f5f0e8;
+            --cream-dim: rgba(245,240,232,0.65);
+            --border:    rgba(201,168,76,0.2);
+            --border-hi: rgba(201,168,76,0.45);
+            --danger:    #ff6b6b;
         }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             background: var(--onyx);
             color: var(--cream);
             font-family: 'Montserrat', sans-serif;
-            height: 100vh; overflow: hidden;
-            display: flex; flex-direction: column;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        /* ── METALLIC GOLD TEXT SHINE ── */
+        /* ── METALLIC GOLD SHINE ── */
         .gold-text-shine {
             background: linear-gradient(to right, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fcf6ba 75%, #bf953f 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-size: 200% auto;
             animation: shine 4s linear infinite;
-            font-weight: 600;
-            text-shadow: 0px 2px 4px rgba(0,0,0,0.3);
         }
         @keyframes shine { to { background-position: 200% center; } }
 
         /* ── HEADER ── */
-        .header { padding: 20px 22px 0; z-index: 10; animation: riseIn 0.9s ease both; }
+        .header { padding: 16px 20px 0; flex-shrink: 0; animation: riseIn 0.9s ease both; }
         .brand {
-            font-family: 'Cormorant Garamond', serif; font-weight: 300;
-            font-size: 2.4rem; letter-spacing: 12px; text-transform: uppercase;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 300;
+            font-size: 2.2rem;
+            letter-spacing: 12px;
+            text-transform: uppercase;
         }
         .brand em { color: var(--gold); font-style: normal; }
-        .tagline { font-size: 0.45rem; letter-spacing: 3.5px; text-transform: uppercase; color: var(--gold); margin-top: 7px; }
+        .tagline {
+            font-size: 0.42rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
 
         /* ── CANVAS ── */
-        .canvas-wrap { flex: 1; margin: 12px 22px 10px; position: relative; overflow: hidden; }
-        .canvas-inner {
-            width: 100%; height: 100%; background: var(--obsidian);
-            border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+        .canvas-wrap {
+            margin: 10px 20px 8px;
+            flex-shrink: 0;
+            height: 160px;
+            position: relative;
         }
-        #preview { width:100%; height:100%; object-fit:cover; display:none; animation: imgReveal 1s ease both; }
-        .empty-label { font-size:0.5rem; letter-spacing:5px; text-transform:uppercase; opacity: 0.4; }
+        .canvas-inner {
+            width: 100%; height: 100%;
+            background: var(--obsidian);
+            border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        #preview {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: none;
+            animation: imgReveal 0.8s ease both;
+        }
+        .empty-label {
+            font-size: 0.48rem;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            opacity: 0.35;
+        }
+        .capture-hint {
+            position: absolute;
+            bottom: 7px; right: 9px;
+            font-size: 0.38rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--gold);
+            opacity: 0.5;
+        }
 
-        /* ── INSCRIPTION ZONE ── */
-        .inscription-zone { padding: 0 22px 20px; z-index: 10; position: relative; }
-        .chapter { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
-        .chapter-rule { flex:1; height:1px; background: var(--border); }
-        .chapter-label { font-size: 0.6rem; letter-spacing: 5px; text-transform: uppercase; }
+        /* ── OUTPUT PANEL ── */
+        #outputPanel {
+            margin: 0 20px 6px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            display: none;           /* shown after first response */
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .output-scroll {
+            overflow-y: auto;
+            padding: 14px 14px 18px;
+            flex: 1;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        .output-scroll::-webkit-scrollbar { width: 4px; }
+        .output-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        /* Loading */
+        .loading-wrap {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 12px; padding: 30px; width: 100%;
+        }
+        .spinner {
+            width: 32px; height: 32px;
+            border: 2px solid var(--border);
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 0.55rem; letter-spacing: 3px; text-transform: uppercase; }
+
+        /* Error */
+        .error-wrap {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 8px; padding: 24px; width: 100%;
+            text-align: center;
+        }
+
+        /* Voice note */
+        .voice-note-section {
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+        .voice-note-label {
+            font-size: 0.55rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .voice-script {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: 0.9rem;
+            color: var(--cream-dim);
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .mirror-audio {
+            width: 100%;
+            height: 28px;
+            filter: invert(1) sepia(1) saturate(0.4) hue-rotate(5deg);
+            opacity: 0.8;
+        }
+
+        /* Intent pill */
+        .intent-pill {
+            display: inline-block;
+            font-size: 0.42rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--gold);
+            border: 1px solid var(--border);
+            padding: 3px 8px;
+            margin-bottom: 12px;
+        }
+
+        /* Mirror text */
+        .mirror-text { font-size: 0.72rem; line-height: 1.7; }
+
+        .section-head {
+            display: flex; align-items: center; gap: 8px;
+            margin: 14px 0 6px;
+        }
+        .section-icon { font-size: 1rem; }
+        .section-title {
+            font-size: 0.55rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--gold);
+        }
+
+        .garment-header {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 400;
+            font-size: 1rem;
+            color: var(--gold-light);
+            margin: 12px 0 6px;
+            letter-spacing: 1px;
+        }
+
+        .match-type {
+            font-size: 0.5rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--cream-dim);
+            margin: 8px 0 4px;
+            display: flex; gap: 6px; align-items: center;
+        }
+
+        .product-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            margin: 4px 0 2px;
+        }
+        .product-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 0.95rem;
+            color: var(--cream);
+        }
+        .product-price {
+            font-size: 0.55rem;
+            letter-spacing: 1px;
+            color: var(--gold);
+            white-space: nowrap;
+        }
+        .product-note {
+            font-size: 0.6rem;
+            color: var(--cream-dim);
+            margin: 2px 0 6px 8px;
+            font-style: italic;
+        }
+        .product-link {
+            display: inline-block;
+            font-size: 0.48rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--gold);
+            text-decoration: none;
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            margin: 4px 0 8px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .product-link:hover {
+            border-color: var(--gold);
+            background: rgba(201,168,76,0.08);
+        }
+        .mirror-para { margin: 3px 0; color: var(--cream-dim); }
+        .section-rule {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 12px 0;
+        }
+
+        /* ── INPUT ZONE ── */
+        .inscription-zone {
+            padding: 0 20px 14px;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+        .chapter {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 9px;
+        }
+        .chapter-rule { flex: 1; height: 1px; background: var(--border); }
+        .chapter-label { font-size: 0.55rem; letter-spacing: 5px; text-transform: uppercase; }
 
         #user-input {
-            width: 100%; background: transparent; border: none; outline: none;
+            width: 100%;
+            background: transparent;
+            border: none; outline: none;
             border-bottom: 1px solid var(--border);
-            font-family: 'Cormorant Garamond', serif; font-style: italic;
-            font-size: 1.3rem; color: var(--cream); padding: 10px 0; margin-bottom: 15px;
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: 1.2rem;
+            color: var(--cream);
+            padding: 8px 0;
+            margin-bottom: 12px;
+            resize: none;
+            line-height: 1.4;
         }
-        #user-input::placeholder { color: rgba(201, 168, 76, 0.6); }
+        #user-input::placeholder { color: rgba(201,168,76,0.5); }
+        #user-input:focus { border-bottom-color: var(--gold); }
 
-        /* ── MIC ASSEMBLY ── */
-        .mic-assembly { display: flex; align-items: center; gap: 15px; }
+        /* ── CONTROLS ROW ── */
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Mic orb */
         .mic-orb {
-            width: 50px; height: 50px; border-radius: 50%; border: 1px solid var(--gold);
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            border: 1px solid var(--gold);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
             background: radial-gradient(circle, rgba(201,168,76,0.2), transparent);
+            flex-shrink: 0;
+            transition: border-color 0.2s, background 0.2s;
         }
-        .mic-label { font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase; }
-        .mic-sub { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.9rem; }
+        .mic-orb:hover { border-color: var(--gold-light); }
 
-        @keyframes riseIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes imgReveal { from{opacity:0;filter:blur(5px)} to{opacity:1;filter:blur(0)} }
+        .mic-copy { flex: 1; }
+        .mic-sub {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: 0.85rem;
+        }
+
+        /* Send button */
+        #sendBtn {
+            flex-shrink: 0;
+            background: transparent;
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.48rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            padding: 9px 14px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+        #sendBtn:hover {
+            background: var(--gold);
+            color: var(--onyx);
+        }
+
+        /* ── STATUS BAR ── */
+        #status {
+            font-size: 0.42rem;
+            text-align: center;
+            color: var(--gold);
+            opacity: 0.5;
+            padding-bottom: 6px;
+            letter-spacing: 2px;
+            flex-shrink: 0;
+        }
+
+        /* ── ANIMATIONS ── */
+        @keyframes riseIn  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes imgReveal { from{opacity:0;filter:blur(4px)} to{opacity:1;filter:blur(0)} }
     </style>
 </head>
 <body>
 
+<!-- HEADER -->
 <div class="header">
     <h1 class="brand">M<em>i</em>rror</h1>
     <div class="tagline gold-text-shine">Dress Like Nobody's Watching. Shop Like Everybody Is.</div>
 </div>
 
+<!-- SCREENSHOT CANVAS -->
 <div class="canvas-wrap">
     <div class="canvas-inner">
-        <img id="preview" src="">
+        <img id="preview" src="" alt="captured screenshot">
         <div class="empty-label" id="emptyState">Capture your context</div>
+        <div class="capture-hint">Ctrl+Shift+S to capture</div>
     </div>
 </div>
 
+<!-- OUTPUT PANEL (hidden until first response) -->
+<div id="outputPanel"></div>
+
+<!-- INPUT ZONE -->
 <div class="inscription-zone">
     <div class="chapter">
         <div class="chapter-rule"></div>
@@ -103,20 +504,30 @@
         <div class="chapter-rule"></div>
     </div>
 
-    <textarea id="user-input" rows="1" placeholder="Seek the extraordinary…"></textarea>
+    <textarea id="user-input" rows="2" placeholder="Seek the extraordinary… or speak below"></textarea>
 
-    <div class="mic-assembly">
-        <div class="mic-orb" id="micBtn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8c97a" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path></svg>
+    <div class="controls-row">
+        <!-- Mic -->
+        <div class="mic-orb" id="micBtn" title="Hold to record voice">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e8c97a" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8"  y1="23" x2="16" y2="23"/>
+            </svg>
         </div>
+
         <div class="mic-copy">
-<!--            <div class="mic-label gold-text-shine" id="micLabel">Touch the orb to speak</div>-->
             <div class="mic-sub gold-text-shine" id="micSub">Voice becomes intention</div>
         </div>
+
+        <!-- Send -->
+        <button id="sendBtn">Find My Look ↩</button>
     </div>
 </div>
 
-<div id="status" style="font-size: 10px; text-align: center; color: var(--gold); margin-top: 10px; opacity: 0.5;">READY</div>
+<!--&lt;!&ndash; STATUS &ndash;&gt;-->
+<!--<div id="status">READY</div>-->
 
 <script src="sidepanel.js"></script>
 </body>
