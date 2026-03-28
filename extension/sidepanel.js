@@ -106,7 +106,22 @@
 // Mirror — sidepanel.js (fully integrated)
 // ─────────────────────────────────────────────
 
-const BACKEND = "http://localhost:8000";
+/** Cloud Run (update if your service URL changes). Override in chrome.storage.local: { mirrorBackendUrl: "https://..." } */
+const DEFAULT_BACKEND = "https://mirror-api-971482759292.us-central1.run.app";
+
+function normalizeBackendUrl(url) {
+  const u = (url || DEFAULT_BACKEND).trim();
+  return u.replace(/\/$/, "");
+}
+
+function getBackendUrl() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get({ mirrorBackendUrl: DEFAULT_BACKEND }, (items) => {
+      resolve(normalizeBackendUrl(items.mirrorBackendUrl));
+    });
+  });
+}
+
 let mediaRecorder = null;
 let audioChunks = [];
 let capturedImage = null;
@@ -127,6 +142,157 @@ const waveformCanvas = document.getElementById("waveformCanvas");
 
 function setStatus(text) {
   if (statusEl) statusEl.textContent = text;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/** Plain-text fallback: escape + linkify URLs + newlines */
+function formatMirrorText(text) {
+  if (!text) return "";
+  return text
+    .split("\n")
+    .map((line) => {
+      const esc = escapeHtml(line);
+      return esc.replace(
+        /(https?:\/\/[^\s<>"]+)/g,
+        '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+      );
+    })
+    .join("<br>");
+}
+
+function mirrorInlineBold(escapedLine) {
+  return escapedLine.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+}
+
+function mirrorLinkify(escapedLine) {
+  return escapedLine.replace(
+    /(https?:\/\/[^\s<>"']+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" class="mirror-inline-link">$1</a>'
+  );
+}
+
+/** Fragment: escaped HTML, then **bold**, then auto-link bare URLs. */
+function mirrorFormatFragment(fragment) {
+  if (!fragment) return "";
+  return mirrorLinkify(mirrorInlineBold(escapeHtml(fragment)));
+}
+
+/**
+ * Inline formatting including Markdown links [label](url) (Gemini sometimes uses these).
+ */
+function mirrorFormatInline(s) {
+  if (!s) return "";
+  const linkRe = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
+  const chunks = [];
+  let last = 0;
+  let m;
+  while ((m = linkRe.exec(s)) !== null) {
+    chunks.push(mirrorFormatFragment(s.slice(last, m.index)));
+    const href = m[2];
+    const label = (m[1] && m[1].trim()) || "Shop link";
+    chunks.push(
+      `<a class="mirror-shop-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`
+    );
+    last = linkRe.lastIndex;
+  }
+  chunks.push(mirrorFormatFragment(s.slice(last)));
+  return chunks.join("");
+}
+
+/**
+ * Renders Mirror/Gemini stylist output: ###, **bold**, > quotes, ---, bullets, links.
+ * Self-contained so it works even when CDN/vendor scripts fail in the extension.
+ */
+function renderMirrorResponse(raw) {
+  if (!raw) return "";
+  const lines = raw.split("\n");
+  const parts = [];
+  for (const line of lines) {
+    const t = line.trimEnd();
+    if (t === "") {
+      parts.push("<br>");
+      continue;
+    }
+    if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(t)) {
+      parts.push("<hr>");
+      continue;
+    }
+    const heading = t.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      const n = heading[1].length;
+      parts.push(`<h${n}>${mirrorFormatInline(heading[2])}</h${n}>`);
+      continue;
+    }
+    if (t.startsWith("> ")) {
+      parts.push(`<blockquote>${mirrorFormatInline(t.slice(2))}</blockquote>`);
+      continue;
+    }
+    if (/^\s*[-*•]\s+/.test(t)) {
+      const rest = t.replace(/^\s*[-*•]\s+/, "");
+      parts.push(`<div class="mirror-li">• ${mirrorFormatInline(rest)}</div>`);
+      continue;
+    }
+    const bareUrl = t.match(/^https?:\/\/\S+$/);
+    if (bareUrl) {
+      const u = bareUrl[0];
+      let label = "Shop";
+      try {
+        const h = new URL(u).hostname.replace(/^www\./, "");
+        if (h) label = h.split(".")[0];
+        label = label.charAt(0).toUpperCase() + label.slice(1);
+      } catch (_) {}
+      parts.push(
+        `<div class="mirror-url-row"><a class="mirror-shop-btn" href="${escapeHtml(u)}" target="_blank" rel="noopener noreferrer">Open on ${escapeHtml(label)} →</a></div>`
+      );
+      continue;
+    }
+    if (
+      /^(✅|🔀|🛍️|🪞|💡)\s/u.test(t) ||
+      /^(Exact Matches|Similar Picks|Shop The Look|Mirror Sees|Stylist Note)/i.test(t)
+    ) {
+      parts.push(`<div class="mirror-subhead">${mirrorFormatInline(t)}</div>`);
+      continue;
+    }
+    if (/^[A-Za-z][^:]{0,60}:\s*$/.test(t)) {
+      parts.push(`<div class="mirror-subhead mirror-subhead-muted">${mirrorFormatInline(t)}</div>`);
+      continue;
+    }
+    parts.push(`<div class="mirror-para">${mirrorFormatInline(t)}</div>`);
+  }
+  return parts.join("");
+}
+
+function showAnalyzeResult(data) {
+  const panel = document.getElementById("outputPanel");
+  if (!panel) return;
+
+  panel.classList.add("visible");
+  panel.innerHTML = "";
+
+  const scroll = document.createElement("div");
+  scroll.className = "output-scroll";
+
+  if (data.voice_note_audio) {
+    const wrap = document.createElement("div");
+    wrap.className = "output-voice";
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.src = `data:audio/wav;base64,${data.voice_note_audio}`;
+    wrap.appendChild(audio);
+    scroll.appendChild(wrap);
+  }
+
+  const body = document.createElement("div");
+  body.className = "mirror-response-body";
+  body.innerHTML = renderMirrorResponse(data.mirror_response || "");
+  scroll.appendChild(body);
+
+  panel.appendChild(scroll);
 }
 
 function startWaveform(stream) {
@@ -274,7 +440,8 @@ async function transcribeToTextField(blob) {
 
     try {
       userInput.placeholder = "Transcribing style desire...";
-      const response = await fetch(`${BACKEND}/transcribe`, {
+      const backend = await getBackendUrl();
+      const response = await fetch(`${backend}/transcribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -317,7 +484,8 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
 
   try {
     setStatus("ANALYZING");
-    const response = await fetch(`${BACKEND}/analyze`, {
+    const backend = await getBackendUrl();
+    const response = await fetch(`${backend}/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -330,9 +498,11 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
 
     const data = await response.json();
     console.log("Analyze response:", data);
+    showAnalyzeResult(data);
     setStatus("DONE");
   } catch (err) {
     console.error("Analyze error:", err);
-    setStatus("ERROR");
+    const msg = err && err.message ? err.message : String(err);
+    setStatus(msg.length > 90 ? `ERROR: ${msg.slice(0, 87)}…` : `ERROR: ${msg}`);
   }
 });

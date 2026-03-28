@@ -1,0 +1,9 @@
+.git
+__pycache__
+*.pyc
+.env
+.env.*
+extension/sidepanel.html
+extension/sidepanel.js
+extension/background.js
+extension/manifest.json

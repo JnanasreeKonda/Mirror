@@ -23,21 +23,24 @@ except Exception:
 if load_dotenv:
     load_dotenv()
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 SERP_API_KEY   = os.environ.get("SERP_API_KEY")
 
 if not GEMINI_API_KEY:
     raise RuntimeError(
-        "GEMINI_API_KEY is not set. Create a .env file (ignored by git) or export GEMINI_API_KEY in your shell."
+        "GEMINI_API_KEY (or GOOGLE_API_KEY) is not set. "
+        "Use a .env locally or set env vars on Cloud Run."
     )
 
 # ── Model constants (change here to update everywhere) ──────────────────────
-# All standard text/vision/audio analysis calls
-FLASH_MODEL = "gemini-3.1-flash-lite-preview"
+# Use a stable model IDs for AI Studio keys. Preview IDs (e.g. gemini-3.1-*-preview)
+# often return 403 PERMISSION_DENIED if your key or project cannot access them.
+FLASH_MODEL = os.environ.get("GEMINI_FLASH_MODEL", "gemini-2.5-flash")
 # Live API — native audio output (text-in, speech-out via WebSocket)
-# Uses the stable native-audio model on the Gemini AI Studio key path.
-# Switch to "gemini-live-2.5-flash-native-audio" if moving to Vertex AI.
-LIVE_MODEL  = "gemini-2.5-flash-native-audio-preview-12-2025"
+LIVE_MODEL = os.environ.get(
+    "GEMINI_LIVE_MODEL",
+    "gemini-2.5-flash-native-audio-preview-12-2025",
+)
 # ────────────────────────────────────────────────────────────────────────────
 
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -47,7 +50,7 @@ app = FastAPI(title="Mirror Backend")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["POST", "GET"],
+    allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -469,6 +472,16 @@ class TranscribeResponse(BaseModel):
 # 9. CORE ENDPOINT
 # ─────────────────────────────────────────────
 
+@app.get("/")
+def root():
+    return {
+        "service": "Mirror API",
+        "health": "/health",
+        "analyze": "POST /analyze",
+        "transcribe": "POST /transcribe",
+    }
+
+
 @app.post("/analyze", response_model=MirrorResponse)
 async def analyze_look(request: MirrorRequest):
 
@@ -745,7 +758,12 @@ async def transcribe(request: TranscribeRequest):
 
 @app.get("/health")
 def health_check():
-    return {"status": "Mirror backend is live ✅"}
+    return {
+        "status": "ok",
+        "service": "mirror",
+        "gemini_configured": bool(GEMINI_API_KEY),
+        "serp_configured": bool(SERP_API_KEY and SERP_API_KEY != "YOUR_SERPAPI_KEY_HERE"),
+    }
 
 
 # ─────────────────────────────────────────────
