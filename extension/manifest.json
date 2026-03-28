@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Mirror",
+  "version": "1.0",
+  "permissions": ["sidePanel", "activeTab", "scripting"],
+  "commands": {
+    "capture_look": {
+      "suggested_key": { "default": "Ctrl+Shift+S" },
+      "description": "Capture frame for Mirror"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}
