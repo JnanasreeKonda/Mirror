@@ -529,12 +529,6 @@ This project was built by:
 
 ---
 
-## 📄 License
-
-[Add your license here]
-
----
-
 ## 🙏 Acknowledgments
 
 - **Google Gemini AI** - For powerful multi-modal AI capabilities
