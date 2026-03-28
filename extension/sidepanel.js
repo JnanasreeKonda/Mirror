@@ -106,7 +106,25 @@
 // Mirror — sidepanel.js (fully integrated)
 // ─────────────────────────────────────────────
 
-const BACKEND = "http://localhost:8000";
+/**
+ * Production: your Cloud Run URL (no trailing slash).
+ * Override: chrome.storage.local.set({ mirrorBackendUrl: "https://..." })
+ * Local dev: set to http://localhost:8000 and add host_permissions for http://localhost/*
+ */
+const DEFAULT_BACKEND = "https://mirror-api-971482759292.us-central1.run.app";
+
+function normalizeBackendUrl(url) {
+  return (url || DEFAULT_BACKEND).trim().replace(/\/$/, "");
+}
+
+function getBackendUrl() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get({ mirrorBackendUrl: DEFAULT_BACKEND }, (items) => {
+      resolve(normalizeBackendUrl(items.mirrorBackendUrl));
+    });
+  });
+}
+
 let mediaRecorder = null;
 let audioChunks = [];
 let capturedImage = null;
@@ -317,7 +335,8 @@ async function transcribeToTextField(blob) {
 
     try {
       userInput.placeholder = "Transcribing style desire...";
-      const response = await fetch(`${BACKEND}/transcribe`, {
+      const backend = await getBackendUrl();
+      const response = await fetch(`${backend}/transcribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -362,7 +381,8 @@ sendBtn.addEventListener("click", async () => {
     sendBtn.style.boxShadow = "0 0 20px rgba(201,168,76,0.6)";
     
     setStatus("HUNTING DOWN YOUR PERFECT LOOK 🔍✨");
-    const response = await fetch(`${BACKEND}/analyze`, {
+    const backend = await getBackendUrl();
+    const response = await fetch(`${backend}/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

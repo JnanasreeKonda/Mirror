@@ -24,21 +24,20 @@ if load_dotenv:
     env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
     load_dotenv(dotenv_path=env_path)
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 SERP_API_KEY   = os.environ.get("SERP_API_KEY")
 
 if not GEMINI_API_KEY:
     raise RuntimeError(
-        "GEMINI_API_KEY is not set. Create a .env file (ignored by git) or export GEMINI_API_KEY in your shell."
+        "GEMINI_API_KEY or GOOGLE_API_KEY must be set (Cloud Run env or Mirror/.env)."
     )
 
 # ── Model constants (change here to update everywhere) ──────────────────────
-# All standard text/vision/audio analysis calls
-FLASH_MODEL = "gemini-3.1-flash-lite-preview"
-# Live API — native audio output (text-in, speech-out via WebSocket)
-# Uses the stable native-audio model on the Gemini AI Studio key path.
-# Switch to "gemini-live-2.5-flash-native-audio" if moving to Vertex AI.
-LIVE_MODEL  = "gemini-2.5-flash-native-audio-preview-12-2025"
+FLASH_MODEL = os.environ.get("GEMINI_FLASH_MODEL", "gemini-2.5-flash")
+LIVE_MODEL = os.environ.get(
+    "GEMINI_LIVE_MODEL",
+    "gemini-2.5-flash-native-audio-preview-12-2025",
+)
 # ────────────────────────────────────────────────────────────────────────────
 
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -821,9 +820,22 @@ async def transcribe(request: TranscribeRequest):
 # 10. HEALTH CHECK
 # ─────────────────────────────────────────────
 
+@app.get("/")
+def root():
+    return {
+        "service": "Mirror API",
+        "health": "/health",
+        "endpoints": {"analyze": "POST /analyze", "transcribe": "POST /transcribe"},
+    }
+
+
 @app.get("/health")
 def health_check():
-    return {"status": "Mirror backend is live ✅"}
+    return {
+        "status": "ok",
+        "gemini_configured": bool(GEMINI_API_KEY),
+        "serp_configured": bool(SERP_API_KEY and SERP_API_KEY not in ("", "YOUR_SERPAPI_KEY_HERE")),
+    }
 
 
 # ─────────────────────────────────────────────

@@ -26,6 +26,7 @@
   "version": "1.0",
   "description": "High-end AI fashion stylist reflecting your best self.",
   "permissions": ["sidePanel", "activeTab", "scripting", "storage"],
+  "host_permissions": ["https://*.run.app/*"],
   "background": {
     "service_worker": "background.js"
   },
