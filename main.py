@@ -1,15 +1,30 @@
 import os
 import json
 import base64
-import asyncio
 from fastapi import FastAPI, WebSocket
 from google import generativeai as genai
 
-# Setup Gemini API Key
-os.environ["GOOGLE_API_KEY"] = "YOUR_GEMINI_API_KEY"
-genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+API_KEY = os.environ.get("GOOGLE_API_KEY")
+if API_KEY:
+    genai.configure(api_key=API_KEY)
 
 app = FastAPI()
+
+
+@app.get("/")
+async def root():
+    return {
+        "service": "Mirror API",
+        "health": "/health",
+        "websocket": "/ws/mirror",
+        "note": "Open /health in the browser; the extension uses wss://…/ws/mirror",
+    }
+
+
+@app.get("/health")
+async def health():
+    """Cloud Run and load balancers can use this liveness probe."""
+    return {"status": "ok", "gemini_configured": bool(API_KEY)}
 
 # System Instruction for "Mirror"
 SYSTEM_PROMPT = """
@@ -23,6 +38,13 @@ Be concise, chic, and helpful.
 async def mirror_stream(websocket: WebSocket):
     await websocket.accept()
     print("✅ Mirror Extension Connected")
+
+    if not API_KEY:
+        await websocket.send_text(
+            json.dumps({"error": "Server missing GOOGLE_API_KEY. Set it on Cloud Run (Secret or env)."})
+        )
+        await websocket.close()
+        return
 
     # Initialize Gemini 2.0 Live Session
     model = genai.GenerativeModel("gemini-2.0-flash-exp")

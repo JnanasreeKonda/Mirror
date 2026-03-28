@@ -2,6 +2,39 @@ let mediaRecorder;
 let audioChunks = [];
 let stream;
 
+/** Render Gemini Markdown (links open in a new tab). Call from your WebSocket/fetch handler. */
+function renderMirrorMarkdown(markdown) {
+    const el = document.getElementById('mirror-response');
+    if (!markdown || typeof marked === 'undefined') {
+        el.textContent = markdown || '';
+        return;
+    }
+    el.innerHTML = marked.parse(markdown, { breaks: true });
+    el.querySelectorAll('a').forEach((a) => {
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+    });
+    hideMirrorError();
+}
+
+function showMirrorError(message) {
+    const err = document.getElementById('mirror-error');
+    err.textContent = message;
+    err.style.display = 'block';
+    document.getElementById('retryBtn').classList.add('visible');
+}
+
+function hideMirrorError() {
+    document.getElementById('mirror-error').style.display = 'none';
+    document.getElementById('retryBtn').classList.remove('visible');
+}
+
+document.getElementById('retryBtn').addEventListener('click', () => {
+    hideMirrorError();
+    document.getElementById('mirror-response').innerHTML = '';
+    document.getElementById('status').innerText = stream ? 'Ready for Ctrl+Shift+S' : 'Click button to enable mic';
+});
+
 // 1. PRIME THE MIC: This solves the "Permission Dismissed" error
 document.getElementById('startMirrorBtn').addEventListener('click', async () => {
     try {

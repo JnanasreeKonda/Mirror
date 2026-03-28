@@ -1,0 +1,10 @@
+# Same idea as .gitignore — keeps uploads small and avoids shipping secrets.
+.git
+.gitignore
+extension
+*.md
+__pycache__
+*.pyc
+.env
+**/.env
+.vscode
