@@ -543,23 +543,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Montserrat:wght@200;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --background: #d4c5b0;
-            --card:       #e8dfd0;
-            --card-hover: #d9cdb9;
-            --tan:        #a68a5e;
-            --tan-dark:   #8b7347;
-            --brown:      #6b5435;
-            --brown-dark: #4a3a24;
-            --text-dark:  #1a1410;
-            --text-mid:   #2d2520;
-            --border:     rgba(107,84,53,0.3);
-            --shadow:     rgba(26,20,16,0.18);
+            --background: #f8f5f2;
+            --card:       #ffffff;
+            --card-hover: #f0ebf8;
+            --purple:     #8b5a8e;
+            --purple-dark:#6b4569;
+            --mauve:      #a67c9f;
+            --pink:       #d4a5c7;
+            --text-dark:  #2d1b2e;
+            --text-mid:   #5a4a5c;
+            --border:     rgba(139,90,142,0.2);
+            --shadow:     rgba(45,27,46,0.12);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background: linear-gradient(135deg, #b8a68d 0%, #d4c5b0 25%, #e8dfd0 50%, #d4c5b0 75%, #a89578 100%);
+            background: linear-gradient(135deg, #f8f5f2 0%, #faf8f5 50%, #f5f0ed 100%);
             background-size: 400% 400%;
             color: var(--text-dark);
             font-family: 'Montserrat', sans-serif;
@@ -584,9 +584,9 @@
             right: 0;
             bottom: 0;
             background: 
-                radial-gradient(circle at 20% 30%, rgba(166,138,94,0.35) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(107,84,53,0.25) 0%, transparent 50%),
-                radial-gradient(circle at 50% 50%, rgba(184,166,141,0.3) 0%, transparent 60%);
+                radial-gradient(circle at 20% 30%, rgba(139,90,142,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(166,124,159,0.06) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(212,165,199,0.05) 0%, transparent 60%);
             pointer-events: none;
             z-index: 0;
             animation: ambientFloat 20s ease-in-out infinite;
@@ -644,16 +644,21 @@
         
         .brand {
             font-family: 'Cormorant Garamond', serif;
-            font-weight: 300; font-size: 2.2rem;
-            letter-spacing: 12px; text-transform: uppercase;
+            font-weight: 700; font-size: 3rem;
+            letter-spacing: 14px; text-transform: uppercase;
             color: var(--text-dark);
             transition: all 0.3s ease;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             cursor: pointer;
+            background: linear-gradient(135deg, rgba(139,90,142,0.15), rgba(166,124,159,0.1));
+            padding: 12px 24px;
+            border-radius: 12px;
+            display: inline-block;
+            box-shadow: 0 6px 20px rgba(139,90,142,0.12);
         }
         .brand:hover { 
             animation: brandPulse 0.8s ease infinite; 
-            color: var(--brown);
+            color: var(--purple);
             transform: scale(1.02);
         }
         
@@ -662,20 +667,20 @@
             50% { transform: scale(1.05); }
         }
         
-        .brand em { color: var(--brown); font-style: normal; }
+        .brand em { color: var(--purple); font-style: normal; }
         .tagline {
-            font-size: 0.5rem;
-            letter-spacing: 3px;
+            font-size: 0.75rem;
+            letter-spacing: 4px;
             text-transform: uppercase;
             color: var(--text-mid);
             margin-top: 0;
-            font-weight: 500;
+            font-weight: 600;
             animation: slideIn 1s ease 0.3s both, taglineGlow 3s ease-in-out infinite;
         }
         
         @keyframes taglineGlow {
             0%, 100% { opacity: 0.8; }
-            50% { opacity: 1; text-shadow: 0 0 8px rgba(139,111,71,0.3); }
+            50% { opacity: 1; text-shadow: 0 0 8px rgba(139,90,142,0.2); }
         }
 
         #preview { display: none; }
@@ -695,47 +700,47 @@
 
         #user-input {
             width: 100%; background: var(--card); border: 2px solid var(--border); outline: none;
-            border-radius: 12px;
+            border-radius: 14px;
             font-family: 'Cormorant Garamond', serif; font-style: italic;
-            font-size: 1.1rem; color: var(--text-dark); padding: 12px; margin-bottom: 12px;
-            box-shadow: 0 4px 12px var(--shadow);
+            font-size: 1.3rem; color: var(--text-dark); padding: 16px 18px; margin-bottom: 16px;
+            box-shadow: 0 4px 16px var(--shadow);
             transition: all 0.3s ease;
         }
         #user-input:focus {
-            border-color: var(--brown);
-            box-shadow: 0 6px 20px rgba(107,84,53,0.4);
+            border-color: var(--purple);
+            box-shadow: 0 8px 24px rgba(139,90,142,0.25);
             transform: translateY(-2px);
         }
-        #user-input::placeholder { color: var(--text-mid); }
+        #user-input::placeholder { color: var(--text-mid); opacity: 0.6; }
 
         .controls-row { display: flex; align-items: center; gap: 12px; }
         .mic-orb {
-            width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--tan);
+            width: 52px; height: 52px; border-radius: 50%; border: 3px solid var(--purple);
             display: flex; align-items: center; justify-content: center; cursor: pointer;
-            background: radial-gradient(circle, rgba(196,165,123,0.2), transparent);
+            background: radial-gradient(circle, rgba(139,90,142,0.15), transparent);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             animation: float 3s ease-in-out infinite, orbGlow 2s ease-in-out infinite;
         }
         
         @keyframes orbGlow {
-            0%, 100% { box-shadow: 0 0 10px rgba(196,165,123,0.2); }
-            50% { box-shadow: 0 0 20px rgba(196,165,123,0.4), 0 0 30px rgba(196,165,123,0.2); }
+            0%, 100% { box-shadow: 0 0 12px rgba(139,90,142,0.3); }
+            50% { box-shadow: 0 0 24px rgba(139,90,142,0.5), 0 0 36px rgba(139,90,142,0.3); }
         }
         
         .mic-orb:hover {
             transform: scale(1.15) rotate(5deg);
-            border-color: var(--brown);
-            box-shadow: 0 6px 20px rgba(196,165,123,0.5), 0 0 30px rgba(196,165,123,0.3);
+            border-color: var(--purple-dark);
+            box-shadow: 0 8px 24px rgba(139,90,142,0.5), 0 0 36px rgba(139,90,142,0.3);
         }
         .mic-orb svg { transition: all 0.3s ease; }
         .mic-orb:hover svg { transform: scale(1.2) rotate(-5deg); }
         #sendBtn {
-            background: linear-gradient(135deg, var(--brown) 0%, var(--tan) 100%);
+            background: linear-gradient(135deg, var(--purple) 0%, var(--mauve) 100%);
             border: none;
-            color: white; font-size: 0.5rem; letter-spacing: 3px;
-            text-transform: uppercase; padding: 12px 20px; cursor: pointer;
-            border-radius: 8px; font-weight: 600;
-            box-shadow: 0 4px 12px rgba(139,111,71,0.3);
+            color: white; font-size: 0.7rem; letter-spacing: 3px;
+            text-transform: uppercase; padding: 14px 28px; cursor: pointer;
+            border-radius: 10px; font-weight: 700;
+            box-shadow: 0 6px 16px rgba(139,90,142,0.35);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
@@ -743,8 +748,8 @@
         }
         
         @keyframes buttonPulse {
-            0%, 100% { box-shadow: 0 4px 12px rgba(139,111,71,0.3); }
-            50% { box-shadow: 0 4px 16px rgba(139,111,71,0.4), 0 0 20px rgba(139,111,71,0.2); }
+            0%, 100% { box-shadow: 0 6px 16px rgba(139,90,142,0.35); }
+            50% { box-shadow: 0 6px 20px rgba(139,90,142,0.45), 0 0 24px rgba(139,90,142,0.25); }
         }
         
         #sendBtn::before {
@@ -760,7 +765,7 @@
         }
         #sendBtn:hover {
             transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 8px 24px rgba(139,111,71,0.5), 0 0 30px rgba(139,111,71,0.3);
+            box-shadow: 0 10px 28px rgba(139,90,142,0.5), 0 0 36px rgba(139,90,142,0.3);
         }
         #sendBtn:active {
             transform: translateY(-1px) scale(0.98);
